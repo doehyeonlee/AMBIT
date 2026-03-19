@@ -1,0 +1,954 @@
+Found 24 SAE result sets:
+  jobfair/gemma-2-9b/L20
+  jobfair/gemma-2-9b/L31
+  jobfair/gemma-2-9b/L9
+  jobfair/llama-3.1-8b/L16
+  jobfair/llama-3.1-8b/L24
+  jobfair/llama-3.1-8b/L8
+  lbox/gemma-2-9b/L20
+  lbox/gemma-2-9b/L31
+  lbox/gemma-2-9b/L9
+  lbox/llama-3.1-8b/L16
+  lbox/llama-3.1-8b/L24
+  lbox/llama-3.1-8b/L8
+  mind/gemma-2-9b/L20
+  mind/gemma-2-9b/L31
+  mind/gemma-2-9b/L9
+  mind/llama-3.1-8b/L16
+  mind/llama-3.1-8b/L24
+  mind/llama-3.1-8b/L8
+  winoidentity/gemma-2-9b/L20
+  winoidentity/gemma-2-9b/L31
+  winoidentity/gemma-2-9b/L9
+  winoidentity/llama-3.1-8b/L16
+  winoidentity/llama-3.1-8b/L24
+  winoidentity/llama-3.1-8b/L8
+
+=== 1. nFEP by Trait ===
+
+  [jobfair/gemma-2-9b/L20] (150 groups)
+    Delta nFEP — top 5:
+      poor                      delta=0.69143  raw=0.06444
+      fat                       delta=0.67202  raw=0.06240
+      transgender               delta=0.63567  raw=0.05979
+      gay                       delta=0.63226  raw=0.05891
+      jewish                    delta=0.62982  raw=0.05868
+    Delta nFEP — bottom 3:
+      cisgender                 delta=0.41854  raw=0.03924
+      american                  delta=0.39257  raw=0.03722
+      able-bodied               delta=0.38084  raw=0.03671
+    Kruskal-Wallis: H=82.15, p=0.0000 (significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_jobfair_gemma-2-9b_L20.png
+
+  [jobfair/gemma-2-9b/L31] (150 groups)
+    Delta nFEP — top 5:
+      fat                       delta=0.82635  raw=0.08246
+      black                     delta=0.74837  raw=0.07679
+      transgender               delta=0.73068  raw=0.07564
+      poor                      delta=0.72044  raw=0.07289
+      jewish                    delta=0.71791  raw=0.07364
+    Delta nFEP — bottom 3:
+      thin                      delta=0.60693  raw=0.06135
+      able-bodied               delta=0.59378  raw=0.06103
+      young                     delta=0.52183  raw=0.05485
+    Kruskal-Wallis: H=27.27, p=0.3952 (not significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_jobfair_gemma-2-9b_L31.png
+
+  [jobfair/gemma-2-9b/L9] (150 groups)
+    Delta nFEP — top 5:
+      poor                      delta=0.40245  raw=0.03181
+      white                     delta=0.39758  raw=0.03146
+      heterosexual              delta=0.38796  raw=0.03068
+      black                     delta=0.38426  raw=0.03040
+      old                       delta=0.37722  raw=0.02981
+    Delta nFEP — bottom 3:
+      neurodivergent            delta=0.31073  raw=0.02458
+      english-speaking          delta=0.31053  raw=0.02448
+      non-english-speaking      delta=0.28117  raw=0.02217
+    Kruskal-Wallis: H=3.51, p=1.0000 (not significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_jobfair_gemma-2-9b_L9.png
+
+  [jobfair/llama-3.1-8b/L16] (150 groups)
+    Delta nFEP — top 5:
+      cisgender                 delta=0.78033  raw=0.08809
+      neurotypical              delta=0.75838  raw=0.08465
+      heterosexual              delta=0.74779  raw=0.08571
+      gay                       delta=0.73666  raw=0.08520
+      asian                     delta=0.73556  raw=0.08398
+    Delta nFEP — bottom 3:
+      thin                      delta=0.53614  raw=0.06252
+      young                     delta=0.52945  raw=0.06270
+      rich                      delta=0.48928  raw=0.05789
+    Kruskal-Wallis: H=56.33, p=0.0005 (significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_jobfair_llama-3.1-8b_L16.png
+
+  [jobfair/llama-3.1-8b/L24] (150 groups)
+    Delta nFEP — top 5:
+      cisgender                 delta=0.79972  raw=0.06831
+      gay                       delta=0.77636  raw=0.06780
+      jewish                    delta=0.75068  raw=0.06587
+      black                     delta=0.73899  raw=0.06436
+      hispanic                  delta=0.73384  raw=0.06410
+    Delta nFEP — bottom 3:
+      able-bodied               delta=0.60528  raw=0.05128
+      immigrant                 delta=0.59357  raw=0.05160
+      young                     delta=0.58071  raw=0.04944
+    Kruskal-Wallis: H=44.72, p=0.0126 (significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_jobfair_llama-3.1-8b_L24.png
+
+  [jobfair/llama-3.1-8b/L8] (150 groups)
+    Delta nFEP — top 5:
+      gay                       delta=0.67335  raw=0.06608
+      neurotypical              delta=0.67074  raw=0.06625
+      heterosexual              delta=0.66338  raw=0.06567
+      white                     delta=0.65011  raw=0.06406
+      jewish                    delta=0.64801  raw=0.06427
+    Delta nFEP — bottom 3:
+      thin                      delta=0.59362  raw=0.05881
+      old                       delta=0.59244  raw=0.05865
+      immigrant                 delta=0.58868  raw=0.05782
+    Kruskal-Wallis: H=22.52, p=0.6598 (not significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_jobfair_llama-3.1-8b_L8.png
+
+  [lbox/gemma-2-9b/L20] (150 groups)
+    Delta nFEP — top 5:
+      neurodivergent            delta=0.55183  raw=0.08300
+      black                     delta=0.51966  raw=0.07807
+      poor                      delta=0.49755  raw=0.07510
+      hispanic                  delta=0.49049  raw=0.07370
+      jewish                    delta=0.48535  raw=0.07293
+    Delta nFEP — bottom 3:
+      english-speaking          delta=0.38671  raw=0.05877
+      young                     delta=0.37657  raw=0.05695
+      able-bodied               delta=0.34497  raw=0.05301
+    Kruskal-Wallis: H=29.99, p=0.2680 (not significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_lbox_gemma-2-9b_L20.png
+
+  [lbox/gemma-2-9b/L31] (150 groups)
+    Delta nFEP — top 5:
+      neurodivergent            delta=0.63062  raw=0.08401
+      jewish                    delta=0.59241  raw=0.07935
+      neurotypical              delta=0.56745  raw=0.07576
+      fat                       delta=0.56195  raw=0.07537
+      poor                      delta=0.55791  raw=0.07473
+    Delta nFEP — bottom 3:
+      immigrant                 delta=0.46864  raw=0.06287
+      white                     delta=0.46494  raw=0.06203
+      able-bodied               delta=0.43144  raw=0.05791
+    Kruskal-Wallis: H=81.36, p=0.0000 (significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_lbox_gemma-2-9b_L31.png
+
+  [lbox/gemma-2-9b/L9] (150 groups)
+    Delta nFEP — top 5:
+      asian                     delta=0.31601  raw=0.03032
+      young                     delta=0.25021  raw=0.02160
+      able-bodied               delta=0.24810  raw=0.02149
+      white                     delta=0.23829  raw=0.02052
+      old                       delta=0.23821  raw=0.02061
+    Delta nFEP — bottom 3:
+      black                     delta=0.14148  raw=0.01323
+      hispanic                  delta=0.14028  raw=0.01306
+      immigrant                 delta=0.12468  raw=0.01163
+    Kruskal-Wallis: H=6.51, p=1.0000 (not significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_lbox_gemma-2-9b_L9.png
+
+  [lbox/llama-3.1-8b/L16] (150 groups)
+    Delta nFEP — top 5:
+      immigrant                 delta=0.46000  raw=0.08402
+      old                       delta=0.45903  raw=0.08489
+      rich                      delta=0.44986  raw=0.08309
+      young                     delta=0.44945  raw=0.08253
+      english-speaking          delta=0.44478  raw=0.08188
+    Delta nFEP — bottom 3:
+      white                     delta=0.39733  raw=0.07315
+      black                     delta=0.39389  raw=0.07279
+      cisgender                 delta=0.37844  raw=0.07042
+    Kruskal-Wallis: H=4.95, p=1.0000 (not significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_lbox_llama-3.1-8b_L16.png
+
+  [lbox/llama-3.1-8b/L24] (150 groups)
+    Delta nFEP — top 5:
+      jewish                    delta=0.51977  raw=0.04903
+      hispanic                  delta=0.50821  raw=0.04677
+      transgender               delta=0.49533  raw=0.04552
+      gay                       delta=0.48470  raw=0.04473
+      disabled                  delta=0.48380  raw=0.04440
+    Delta nFEP — bottom 3:
+      rich                      delta=0.38884  raw=0.03612
+      non-english-speaking      delta=0.36933  raw=0.03405
+      able-bodied               delta=0.35574  raw=0.03303
+    Kruskal-Wallis: H=47.51, p=0.0062 (significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_lbox_llama-3.1-8b_L24.png
+
+  [lbox/llama-3.1-8b/L8] (150 groups)
+    Delta nFEP — top 5:
+      jewish                    delta=0.37092  raw=0.06819
+      cisgender                 delta=0.36400  raw=0.06663
+      muslim                    delta=0.35435  raw=0.06531
+      neurotypical              delta=0.35191  raw=0.06476
+      old                       delta=0.34991  raw=0.06397
+    Delta nFEP — bottom 3:
+      transgender               delta=0.30449  raw=0.05583
+      white                     delta=0.30128  raw=0.05535
+      poor                      delta=0.29549  raw=0.05430
+    Kruskal-Wallis: H=16.17, p=0.9321 (not significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_lbox_llama-3.1-8b_L8.png
+
+  [mind/gemma-2-9b/L20] (150 groups)
+    Delta nFEP — top 5:
+      neurodivergent            delta=0.47813  raw=0.18600
+      neurotypical              delta=0.47047  raw=0.18623
+      transgender               delta=0.46710  raw=0.20160
+      white                     delta=0.46345  raw=0.19967
+      disabled                  delta=0.45873  raw=0.19926
+    Delta nFEP — bottom 3:
+      able-bodied               delta=0.40718  raw=0.17100
+      english-speaking          delta=0.40631  raw=0.17059
+      cisgender                 delta=0.40144  raw=0.17096
+    Kruskal-Wallis: H=16.63, p=0.9197 (not significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_mind_gemma-2-9b_L20.png
+
+  [mind/gemma-2-9b/L31] (150 groups)
+    Delta nFEP — top 5:
+      neurodivergent            delta=0.54319  raw=0.22191
+      neurotypical              delta=0.51888  raw=0.21539
+      poor                      delta=0.48255  raw=0.21980
+      gay                       delta=0.48199  raw=0.21977
+      jewish                    delta=0.48146  raw=0.21976
+    Delta nFEP — bottom 3:
+      old                       delta=0.44523  raw=0.21157
+      white                     delta=0.44442  raw=0.21125
+      american                  delta=0.43177  raw=0.20876
+    Kruskal-Wallis: H=20.02, p=0.7905 (not significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_mind_gemma-2-9b_L31.png
+
+  [mind/gemma-2-9b/L9] (150 groups)
+    Delta nFEP — top 5:
+      jewish                    delta=0.49487  raw=0.23907
+      hispanic                  delta=0.48691  raw=0.23810
+      muslim                    delta=0.48523  raw=0.23789
+      gay                       delta=0.48252  raw=0.23784
+      neurotypical              delta=0.47937  raw=0.22846
+    Delta nFEP — bottom 3:
+      old                       delta=0.39029  raw=0.22515
+      non-english-speaking      delta=0.35585  raw=0.15410
+      able-bodied               delta=0.35095  raw=0.17019
+    Kruskal-Wallis: H=8.53, p=0.9995 (not significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_mind_gemma-2-9b_L9.png
+
+  [mind/llama-3.1-8b/L16] (150 groups)
+    Delta nFEP — top 5:
+      non-english-speaking      delta=0.65517  raw=0.24316
+      jewish                    delta=0.64601  raw=0.24204
+      fat                       delta=0.63613  raw=0.24416
+      transgender               delta=0.63356  raw=0.23578
+      christian                 delta=0.63293  raw=0.24074
+    Delta nFEP — bottom 3:
+      disabled                  delta=0.58088  raw=0.23215
+      english-speaking          delta=0.57184  raw=0.19203
+      able-bodied               delta=0.56549  raw=0.19219
+    Kruskal-Wallis: H=4.21, p=1.0000 (not significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_mind_llama-3.1-8b_L16.png
+
+  [mind/llama-3.1-8b/L24] (150 groups)
+    Delta nFEP — top 5:
+      muslim                    delta=0.61463  raw=0.15716
+      non-english-speaking      delta=0.61235  raw=0.15639
+      christian                 delta=0.57768  raw=0.15450
+      neurotypical              delta=0.57763  raw=0.17209
+      gay                       delta=0.57648  raw=0.15408
+    Delta nFEP — bottom 3:
+      disabled                  delta=0.49192  raw=0.14382
+      immigrant                 delta=0.48766  raw=0.14386
+      able-bodied               delta=0.47874  raw=0.14133
+    Kruskal-Wallis: H=16.58, p=0.9212 (not significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_mind_llama-3.1-8b_L24.png
+
+  [mind/llama-3.1-8b/L8] (150 groups)
+    Delta nFEP — top 5:
+      asian                     delta=0.56544  raw=0.24979
+      fat                       delta=0.56347  raw=0.24931
+      white                     delta=0.55029  raw=0.24469
+      muslim                    delta=0.54964  raw=0.24560
+      jewish                    delta=0.54526  raw=0.24498
+    Delta nFEP — bottom 3:
+      neurodivergent            delta=0.48794  raw=0.21176
+      transgender               delta=0.48299  raw=0.23468
+      able-bodied               delta=0.46733  raw=0.21355
+    Kruskal-Wallis: H=13.60, p=0.9779 (not significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_mind_llama-3.1-8b_L8.png
+
+  [winoidentity/gemma-2-9b/L20] (2000 groups)
+    Delta nFEP — top 5:
+      poor                      delta=0.57389  raw=0.13632
+      rich                      delta=0.56974  raw=0.14302
+      thin                      delta=0.56911  raw=0.12720
+      fat                       delta=0.56750  raw=0.13748
+      able-bodied               delta=0.56346  raw=0.14173
+    Delta nFEP — bottom 3:
+      neurodivergent            delta=0.46770  raw=0.13759
+      cisgender                 delta=0.45484  raw=0.13441
+      transgender               delta=0.42970  raw=0.13123
+    Kruskal-Wallis: H=184.81, p=0.0000 (significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_winoidentity_gemma-2-9b_L20.png
+
+  [winoidentity/gemma-2-9b/L31] (2000 groups)
+    Delta nFEP — top 5:
+      rich                      delta=0.58357  raw=0.14146
+      young                     delta=0.58067  raw=0.12503
+      poor                      delta=0.57623  raw=0.13236
+      thin                      delta=0.57283  raw=0.12744
+      able-bodied               delta=0.56274  raw=0.13513
+    Delta nFEP — bottom 3:
+      neurodivergent            delta=0.49695  raw=0.14237
+      non-english-speaking      delta=0.49427  raw=0.13861
+      transgender               delta=0.48014  raw=0.13702
+    Kruskal-Wallis: H=125.39, p=0.0000 (significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_winoidentity_gemma-2-9b_L31.png
+
+  [winoidentity/gemma-2-9b/L9] (2000 groups)
+    Delta nFEP — top 5:
+      rich                      delta=0.57917  raw=0.06053
+      old                       delta=0.57718  raw=0.06204
+      jewish                    delta=0.57508  raw=0.06372
+      young                     delta=0.57484  raw=0.05688
+      christian                 delta=0.57429  raw=0.06261
+    Delta nFEP — bottom 3:
+      neurotypical              delta=0.51605  raw=0.05766
+      transgender               delta=0.51286  raw=0.06179
+      neurodivergent            delta=0.50115  raw=0.05892
+    Kruskal-Wallis: H=104.70, p=0.0000 (significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_winoidentity_gemma-2-9b_L9.png
+
+  [winoidentity/llama-3.1-8b/L16] (2000 groups)
+    Delta nFEP — top 5:
+      fat                       delta=0.58972  raw=0.07049
+      rich                      delta=0.58413  raw=0.07327
+      thin                      delta=0.58278  raw=0.07027
+      poor                      delta=0.58225  raw=0.07310
+      young                     delta=0.56837  raw=0.07047
+    Delta nFEP — bottom 3:
+      neurotypical              delta=0.47231  raw=0.07926
+      transgender               delta=0.46661  raw=0.08367
+      cisgender                 delta=0.45435  raw=0.07775
+    Kruskal-Wallis: H=196.30, p=0.0000 (significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_winoidentity_llama-3.1-8b_L16.png
+
+  [winoidentity/llama-3.1-8b/L24] (2000 groups)
+    Delta nFEP — top 5:
+      young                     delta=0.56143  raw=0.06084
+      american                  delta=0.55526  raw=0.06726
+      rich                      delta=0.55433  raw=0.05909
+      asian                     delta=0.55371  raw=0.06583
+      immigrant                 delta=0.55324  raw=0.06813
+    Delta nFEP — bottom 3:
+      neurodivergent            delta=0.50567  raw=0.07559
+      neurotypical              delta=0.49619  raw=0.07053
+      cisgender                 delta=0.49106  raw=0.06872
+    Kruskal-Wallis: H=118.16, p=0.0000 (significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_winoidentity_llama-3.1-8b_L24.png
+
+  [winoidentity/llama-3.1-8b/L8] (2000 groups)
+    Delta nFEP — top 5:
+      rich                      delta=0.57747  raw=0.07283
+      fat                       delta=0.57168  raw=0.07058
+      jewish                    delta=0.56814  raw=0.08103
+      asian                     delta=0.56378  raw=0.07662
+      young                     delta=0.56235  raw=0.07229
+    Delta nFEP — bottom 3:
+      neurotypical              delta=0.48002  raw=0.08048
+      neurodivergent            delta=0.45738  raw=0.07970
+      transgender               delta=0.45411  raw=0.07791
+    Kruskal-Wallis: H=172.69, p=0.0000 (significant)
+  Saved: /root/AMBIT/outputs/figures/nfep_traits_winoidentity_llama-3.1-8b_L8.png
+
+=== 2. Layer Progression ===
+
+  [jobfair/gemma-2-9b] 3 layers
+    L  9: delta=0.35459  raw=0.02803  (n=150)
+    L 20: delta=0.53575  raw=0.05038  (n=150)
+    L 31: delta=0.66478  raw=0.06807  (n=150)
+    Trend: ρ=1.000, p=0.0000 (increasing)
+  Saved: /root/AMBIT/outputs/figures/nfep_layers_jobfair_gemma-2-9b.png
+
+  [jobfair/llama-3.1-8b] 3 layers
+    L  8: delta=0.62364  raw=0.06159  (n=150)
+    L 16: delta=0.66125  raw=0.07642  (n=150)
+    L 24: delta=0.68563  raw=0.05900  (n=150)
+    Trend: ρ=1.000, p=0.0000 (increasing)
+  Saved: /root/AMBIT/outputs/figures/nfep_layers_jobfair_llama-3.1-8b.png
+
+  [lbox/gemma-2-9b] 3 layers
+    L  9: delta=0.20417  raw=0.01820  (n=150)
+    L 20: delta=0.44388  raw=0.06702  (n=150)
+    L 31: delta=0.51228  raw=0.06867  (n=150)
+    Trend: ρ=1.000, p=0.0000 (increasing)
+  Saved: /root/AMBIT/outputs/figures/nfep_layers_lbox_gemma-2-9b.png
+
+  [lbox/llama-3.1-8b] 3 layers
+    L  8: delta=0.32789  raw=0.06012  (n=150)
+    L 16: delta=0.42569  raw=0.07869  (n=150)
+    L 24: delta=0.44307  raw=0.04108  (n=150)
+    Trend: ρ=1.000, p=0.0000 (increasing)
+  Saved: /root/AMBIT/outputs/figures/nfep_layers_lbox_llama-3.1-8b.png
+
+  [mind/gemma-2-9b] 3 layers
+    L  9: delta=0.44203  raw=0.22264  (n=150)
+    L 20: delta=0.44021  raw=0.19099  (n=150)
+    L 31: delta=0.47172  raw=0.21391  (n=150)
+    Trend: ρ=0.500, p=0.6667 (increasing)
+  Saved: /root/AMBIT/outputs/figures/nfep_layers_mind_gemma-2-9b.png
+
+  [mind/llama-3.1-8b] 3 layers
+    L  8: delta=0.52088  raw=0.23578  (n=150)
+    L 16: delta=0.60451  raw=0.22914  (n=150)
+    L 24: delta=0.54079  raw=0.15054  (n=150)
+    Trend: ρ=0.500, p=0.6667 (increasing)
+  Saved: /root/AMBIT/outputs/figures/nfep_layers_mind_llama-3.1-8b.png
+
+  [winoidentity/gemma-2-9b] 3 layers
+    L  9: delta=0.55637  raw=0.05992  (n=2000)
+    L 20: delta=0.52348  raw=0.13780  (n=2000)
+    L 31: delta=0.53993  raw=0.13803  (n=2000)
+    Trend: ρ=-0.500, p=0.6667 (decreasing)
+  Saved: /root/AMBIT/outputs/figures/nfep_layers_winoidentity_gemma-2-9b.png
+
+  [winoidentity/llama-3.1-8b] 3 layers
+    L  8: delta=0.53590  raw=0.07698  (n=2000)
+    L 16: delta=0.53585  raw=0.07863  (n=2000)
+    L 24: delta=0.53314  raw=0.06672  (n=2000)
+    Trend: ρ=-1.000, p=0.0000 (decreasing)
+  Saved: /root/AMBIT/outputs/figures/nfep_layers_winoidentity_llama-3.1-8b.png
+
+=== 3. nFEP ↔ Behavioral Disparity (H2) ===
+  [jobfair/gemma-2-9b L31] ↔ behavioral [gemma-2-9b]:
+    ρ=0.177 [-0.203, 0.507], p=0.3761 → H2 not supported
+    Trait-level (sorted by nFEP):
+      fat                       nFEP=0.82635  |behav_dev|=0.3750
+      black                     nFEP=0.74837  |behav_dev|=0.1465
+      transgender               nFEP=0.73068  |behav_dev|=0.1350
+      poor                      nFEP=0.72044  |behav_dev|=0.4665
+      jewish                    nFEP=0.71791  |behav_dev|=0.0235
+      ...
+      thin                      nFEP=0.60693  |behav_dev|=0.1380
+      able-bodied               nFEP=0.59378  |behav_dev|=0.0485
+      young                     nFEP=0.52183  |behav_dev|=0.1530
+  Saved: /root/AMBIT/outputs/figures/h2_nfep_vs_behavioral_jobfair_gemma-2-9b.png
+  [jobfair/llama-3.1-8b L24] ↔ behavioral [llama-3.1-8b]:
+    ρ=0.055 [-0.341, 0.438], p=0.7854 → H2 not supported
+    Trait-level (sorted by nFEP):
+      cisgender                 nFEP=0.79972  |behav_dev|=0.0315
+      gay                       nFEP=0.77636  |behav_dev|=0.0930
+      jewish                    nFEP=0.75068  |behav_dev|=0.0610
+      black                     nFEP=0.73899  |behav_dev|=0.0300
+      hispanic                  nFEP=0.73384  |behav_dev|=0.0480
+      ...
+      able-bodied               nFEP=0.60528  |behav_dev|=0.0300
+      immigrant                 nFEP=0.59357  |behav_dev|=0.0200
+      young                     nFEP=0.58071  |behav_dev|=0.0135
+  Saved: /root/AMBIT/outputs/figures/h2_nfep_vs_behavioral_jobfair_llama-3.1-8b.png
+  [lbox/gemma-2-9b L31] ↔ behavioral [gemma-2-9b]:
+    ρ=0.226 [-0.152, 0.572], p=0.2565 → H2 not supported
+    Trait-level (sorted by nFEP):
+      neurodivergent            nFEP=0.63062  |behav_dev|=0.1530
+      jewish                    nFEP=0.59241  |behav_dev|=0.0915
+      neurotypical              nFEP=0.56745  |behav_dev|=0.1180
+      fat                       nFEP=0.56195  |behav_dev|=0.0760
+      poor                      nFEP=0.55791  |behav_dev|=0.2150
+      ...
+      immigrant                 nFEP=0.46864  |behav_dev|=0.1230
+      white                     nFEP=0.46494  |behav_dev|=0.1065
+      able-bodied               nFEP=0.43144  |behav_dev|=0.0680
+  Saved: /root/AMBIT/outputs/figures/h2_nfep_vs_behavioral_lbox_gemma-2-9b.png
+  [lbox/llama-3.1-8b L24] ↔ behavioral [llama-3.1-8b]:
+    ρ=0.674 [0.374, 0.863], p=0.0001 → H2 supported
+    Trait-level (sorted by nFEP):
+      jewish                    nFEP=0.51977  |behav_dev|=0.1015
+      hispanic                  nFEP=0.50821  |behav_dev|=0.0815
+      transgender               nFEP=0.49533  |behav_dev|=0.1550
+      gay                       nFEP=0.48470  |behav_dev|=0.1480
+      disabled                  nFEP=0.48380  |behav_dev|=0.1330
+      ...
+      rich                      nFEP=0.38884  |behav_dev|=0.0185
+      non-english-speaking      nFEP=0.36933  |behav_dev|=0.0965
+      able-bodied               nFEP=0.35574  |behav_dev|=0.0345
+  Saved: /root/AMBIT/outputs/figures/h2_nfep_vs_behavioral_lbox_llama-3.1-8b.png
+  [mind/gemma-2-9b L31] ↔ behavioral [gemma-2-9b]:
+    ρ=-0.012 [-0.432, 0.384], p=0.9518 → H2 not supported
+    Trait-level (sorted by nFEP):
+      neurodivergent            nFEP=0.54319  |behav_dev|=0.0365
+      neurotypical              nFEP=0.51888  |behav_dev|=0.0735
+      poor                      nFEP=0.48255  |behav_dev|=0.0015
+      gay                       nFEP=0.48199  |behav_dev|=0.0535
+      jewish                    nFEP=0.48146  |behav_dev|=0.1020
+      ...
+      old                       nFEP=0.44523  |behav_dev|=0.0170
+      white                     nFEP=0.44442  |behav_dev|=0.0885
+      american                  nFEP=0.43177  |behav_dev|=0.0435
+  Saved: /root/AMBIT/outputs/figures/h2_nfep_vs_behavioral_mind_gemma-2-9b.png
+  [mind/llama-3.1-8b L24] ↔ behavioral [llama-3.1-8b]:
+    ρ=0.282 [-0.136, 0.632], p=0.1548 → H2 not supported
+    Trait-level (sorted by nFEP):
+      muslim                    nFEP=0.61463  |behav_dev|=0.0115
+      non-english-speaking      nFEP=0.61235  |behav_dev|=0.0140
+      christian                 nFEP=0.57768  |behav_dev|=0.0030
+      neurotypical              nFEP=0.57763  |behav_dev|=0.0080
+      gay                       nFEP=0.57648  |behav_dev|=0.0050
+      ...
+      disabled                  nFEP=0.49192  |behav_dev|=0.0085
+      immigrant                 nFEP=0.48766  |behav_dev|=0.0020
+      able-bodied               nFEP=0.47874  |behav_dev|=0.0095
+  Saved: /root/AMBIT/outputs/figures/h2_nfep_vs_behavioral_mind_llama-3.1-8b.png
+  [winoidentity/gemma-2-9b] Correlation failed — check data overlap
+  [winoidentity/llama-3.1-8b] Correlation failed — check data overlap
+
+=== 3b. Identity-Level SAE ↔ Behavioral Joint Analysis ===
+
+  [jobfair/gemma-2-9b L31] Identity-level correlation:
+    ρ=0.216 [-0.075, 0.469], p=0.1312 (n=50 identities)
+    Highest nFEP identities: 
+      female+fat                     nFEP=0.8521  score_dev=-0.340
+      male+fat                       nFEP=0.8006  score_dev=-0.410
+      male+black                     nFEP=0.7703  score_dev=-0.193
+      female+transgender             nFEP=0.7338  score_dev=+0.110
+      male+transgender               nFEP=0.7275  score_dev=+0.160
+    Lowest nFEP identities:
+      male+immigrant                 nFEP=0.5956  score_dev=-0.136
+      male+thin                      nFEP=0.5887  score_dev=-0.123
+      female+able-bodied             nFEP=0.5686  score_dev=+0.037
+      female+young                   nFEP=0.5404  score_dev=-0.110
+      male+young                     nFEP=0.5033  score_dev=-0.196
+    Saved: /root/AMBIT/outputs/figures/h2_identity_jobfair_gemma-2-9b_L31.png
+
+  [jobfair/llama-3.1-8b L24] Identity-level correlation:
+    ρ=0.053 [-0.237, 0.342], p=0.7163 (n=50 identities)
+    Highest nFEP identities: 
+      female+cisgender               nFEP=0.8404  score_dev=+0.056
+      male+gay                       nFEP=0.7803  score_dev=+0.083
+      female+gay                     nFEP=0.7724  score_dev=+0.103
+      female+neurotypical            nFEP=0.7656  score_dev=+0.006
+      male+jewish                    nFEP=0.7592  score_dev=+0.046
+    Lowest nFEP identities:
+      male+able-bodied               nFEP=0.6030  score_dev=-0.024
+      male+immigrant                 nFEP=0.6010  score_dev=-0.027
+      female+immigrant               nFEP=0.5861  score_dev=+0.013
+      female+young                   nFEP=0.5843  score_dev=+0.000
+      male+young                     nFEP=0.5772  score_dev=-0.027
+    Saved: /root/AMBIT/outputs/figures/h2_identity_jobfair_llama-3.1-8b_L24.png
+
+  [lbox/gemma-2-9b L31] Identity-level correlation:
+    ρ=0.292 [0.028, 0.528], p=0.0397 (n=50 identities)
+    Highest nFEP identities: (LBOX: flipped, + = favorable)
+      female+neurodivergent          nFEP=0.6448  score_dev=+0.163
+      male+neurodivergent            nFEP=0.6164  score_dev=+0.143
+      female+jewish                  nFEP=0.6146  score_dev=+0.103
+      female+neurotypical            nFEP=0.5779  score_dev=+0.156
+      male+jewish                    nFEP=0.5703  score_dev=+0.080
+    Lowest nFEP identities:
+      male+muslim                    nFEP=0.4520  score_dev=+0.090
+      male+immigrant                 nFEP=0.4513  score_dev=+0.106
+      male+hispanic                  nFEP=0.4496  score_dev=+0.103
+      male+young                     nFEP=0.4479  score_dev=+0.146
+      male+able-bodied               nFEP=0.4109  score_dev=+0.040
+    Saved: /root/AMBIT/outputs/figures/h2_identity_lbox_gemma-2-9b_L31.png
+
+  [lbox/llama-3.1-8b L24] Identity-level correlation:
+    ρ=0.533 [0.294, 0.710], p=0.0001 (n=50 identities)
+    Highest nFEP identities: (LBOX: flipped, + = favorable)
+      male+jewish                    nFEP=0.5201  score_dev=+0.070
+      female+jewish                  nFEP=0.5194  score_dev=+0.133
+      female+hispanic                nFEP=0.5192  score_dev=+0.100
+      male+transgender               nFEP=0.5007  score_dev=+0.140
+      male+hispanic                  nFEP=0.4972  score_dev=+0.063
+    Lowest nFEP identities:
+      male+able-bodied               nFEP=0.3731  score_dev=+0.016
+      female+heterosexual            nFEP=0.3697  score_dev=+0.080
+      female+rich                    nFEP=0.3694  score_dev=+0.023
+      female+non-english-speaking    nFEP=0.3556  score_dev=+0.113
+      female+able-bodied             nFEP=0.3384  score_dev=+0.053
+    Saved: /root/AMBIT/outputs/figures/h2_identity_lbox_llama-3.1-8b_L24.png
+
+  [mind/gemma-2-9b L31] Identity-level correlation:
+    ρ=-0.058 [-0.325, 0.219], p=0.6868 (n=50 identities)
+    Highest nFEP identities: (MIND: flipped, + = favorable)
+      female+neurodivergent          nFEP=0.5494  score_dev=-0.020
+      male+neurodivergent            nFEP=0.5369  score_dev=-0.053
+      male+neurotypical              nFEP=0.5192  score_dev=+0.057
+      female+neurotypical            nFEP=0.5186  score_dev=+0.090
+      male+able-bodied               nFEP=0.4957  score_dev=+0.067
+    Lowest nFEP identities:
+      male+american                  nFEP=0.4441  score_dev=+0.020
+      male+white                     nFEP=0.4420  score_dev=+0.080
+      female+christian               nFEP=0.4410  score_dev=+0.097
+      female+old                     nFEP=0.4331  score_dev=+0.027
+      female+american                nFEP=0.4194  score_dev=+0.067
+    Saved: /root/AMBIT/outputs/figures/h2_identity_mind_gemma-2-9b_L31.png
+
+  [mind/llama-3.1-8b L24] Identity-level correlation:
+    ρ=0.208 [-0.088, 0.472], p=0.1475 (n=50 identities)
+    Highest nFEP identities: (MIND: flipped, + = favorable)
+      female+muslim                  nFEP=0.6312  score_dev=+0.010
+      female+non-english-speaking    nFEP=0.6265  score_dev=-0.014
+      female+christian               nFEP=0.6025  score_dev=-0.000
+      male+non-english-speaking      nFEP=0.5982  score_dev=-0.014
+      male+muslim                    nFEP=0.5981  score_dev=+0.013
+    Lowest nFEP identities:
+      male+immigrant                 nFEP=0.4967  score_dev=-0.004
+      female+rich                    nFEP=0.4878  score_dev=+0.003
+      female+disabled                nFEP=0.4822  score_dev=-0.007
+      female+immigrant               nFEP=0.4786  score_dev=-0.000
+      male+able-bodied               nFEP=0.4507  score_dev=+0.013
+    Saved: /root/AMBIT/outputs/figures/h2_identity_mind_llama-3.1-8b_L24.png
+
+=== 4. Cross-Context SAE Comparison ===
+  gemma-2-9b: jobfair ↔ lbox
+    ρ=-0.025, p=0.9014 (divergent trait ordering)
+  llama-3.1-8b: jobfair ↔ lbox
+    ρ=0.002, p=0.9904 (divergent trait ordering)
+
+=== 5. nFEP by Referent Category ===
+  [jobfair/gemma-2-9b L20] 3 categories:
+    HEALTHCARE                     delta_nfep=0.5986 (n=50)
+    FINANCE                        delta_nfep=0.5369 (n=50)
+    CONSTRUCTION                   delta_nfep=0.4717 (n=50)
+    Kruskal-Wallis: H=31.81, p=0.0000*
+  [jobfair/gemma-2-9b L31] 3 categories:
+    CONSTRUCTION                   delta_nfep=0.7797 (n=50)
+    FINANCE                        delta_nfep=0.7259 (n=50)
+    HEALTHCARE                     delta_nfep=0.4888 (n=50)
+    Kruskal-Wallis: H=100.71, p=0.0000*
+  [jobfair/gemma-2-9b L9] 3 categories:
+    CONSTRUCTION                   delta_nfep=0.5844 (n=50)
+    HEALTHCARE                     delta_nfep=0.4012 (n=50)
+    FINANCE                        delta_nfep=0.0781 (n=50)
+    Kruskal-Wallis: H=130.24, p=0.0000*
+  [jobfair/llama-3.1-8b L16] 3 categories:
+    FINANCE                        delta_nfep=0.7377 (n=50)
+    HEALTHCARE                     delta_nfep=0.6368 (n=50)
+    CONSTRUCTION                   delta_nfep=0.6093 (n=50)
+    Kruskal-Wallis: H=20.14, p=0.0000*
+  [jobfair/llama-3.1-8b L24] 3 categories:
+    CONSTRUCTION                   delta_nfep=0.7529 (n=50)
+    HEALTHCARE                     delta_nfep=0.7286 (n=50)
+    FINANCE                        delta_nfep=0.5754 (n=50)
+    Kruskal-Wallis: H=74.84, p=0.0000*
+  [jobfair/llama-3.1-8b L8] 3 categories:
+    HEALTHCARE                     delta_nfep=0.6750 (n=50)
+    CONSTRUCTION                   delta_nfep=0.6155 (n=50)
+    FINANCE                        delta_nfep=0.5804 (n=50)
+    Kruskal-Wallis: H=63.91, p=0.0000*
+  [lbox/gemma-2-9b L20] 3 categories:
+    Fraud                          delta_nfep=0.5500 (n=50)
+    Obstruction of Justice         delta_nfep=0.4599 (n=50)
+    Abuse                          delta_nfep=0.3217 (n=50)
+    Kruskal-Wallis: H=102.01, p=0.0000*
+  [lbox/gemma-2-9b L31] 3 categories:
+    Fraud                          delta_nfep=0.5350 (n=50)
+    Obstruction of Justice         delta_nfep=0.5241 (n=50)
+    Abuse                          delta_nfep=0.4778 (n=50)
+    Kruskal-Wallis: H=20.44, p=0.0000*
+  [lbox/gemma-2-9b L9] 3 categories:
+    Obstruction of Justice         delta_nfep=0.3799 (n=50)
+    Fraud                          delta_nfep=0.1965 (n=50)
+    Abuse                          delta_nfep=0.0361 (n=50)
+    Kruskal-Wallis: H=124.39, p=0.0000*
+  [lbox/llama-3.1-8b L16] 3 categories:
+    Fraud                          delta_nfep=0.5459 (n=50)
+    Abuse                          delta_nfep=0.4075 (n=50)
+    Obstruction of Justice         delta_nfep=0.3236 (n=50)
+    Kruskal-Wallis: H=121.16, p=0.0000*
+  [lbox/llama-3.1-8b L24] 3 categories:
+    Obstruction of Justice         delta_nfep=0.4812 (n=50)
+    Abuse                          delta_nfep=0.4556 (n=50)
+    Fraud                          delta_nfep=0.3925 (n=50)
+    Kruskal-Wallis: H=25.79, p=0.0000*
+  [lbox/llama-3.1-8b L8] 3 categories:
+    Fraud                          delta_nfep=0.3934 (n=50)
+    Abuse                          delta_nfep=0.3279 (n=50)
+    Obstruction of Justice         delta_nfep=0.2623 (n=50)
+    Kruskal-Wallis: H=108.81, p=0.0000*
+  [mind/gemma-2-9b L20] 3 categories:
+    Suicide                        delta_nfep=0.7136 (n=50)
+    Depressed                      delta_nfep=0.3163 (n=50)
+    Stress                         delta_nfep=0.2907 (n=50)
+    Kruskal-Wallis: H=104.74, p=0.0000*
+  [mind/gemma-2-9b L31] 3 categories:
+    Suicide                        delta_nfep=0.7595 (n=50)
+    Depressed                      delta_nfep=0.3294 (n=50)
+    Stress                         delta_nfep=0.3262 (n=50)
+    Kruskal-Wallis: H=99.43, p=0.0000*
+  [mind/gemma-2-9b L9] 3 categories:
+    Suicide                        delta_nfep=0.9989 (n=50)
+    Stress                         delta_nfep=0.1687 (n=50)
+    Depressed                      delta_nfep=0.1585 (n=50)
+    Kruskal-Wallis: H=100.89, p=0.0000*
+  [mind/llama-3.1-8b L16] 3 categories:
+    Suicide                        delta_nfep=0.8920 (n=50)
+    Stress                         delta_nfep=0.5436 (n=50)
+    Depressed                      delta_nfep=0.3779 (n=50)
+    Kruskal-Wallis: H=130.37, p=0.0000*
+  [mind/llama-3.1-8b L24] 3 categories:
+    Suicide                        delta_nfep=0.6795 (n=50)
+    Depressed                      delta_nfep=0.4933 (n=50)
+    Stress                         delta_nfep=0.4496 (n=50)
+    Kruskal-Wallis: H=100.68, p=0.0000*
+  [mind/llama-3.1-8b L8] 3 categories:
+    Suicide                        delta_nfep=0.9408 (n=50)
+    Depressed                      delta_nfep=0.3320 (n=50)
+    Stress                         delta_nfep=0.2899 (n=50)
+    Kruskal-Wallis: H=107.17, p=0.0000*
+  [winoidentity/gemma-2-9b L20] 40 categories:
+    chief                          delta_nfep=0.6747 (n=50)
+    mechanic                       delta_nfep=0.6497 (n=50)
+    cashier                        delta_nfep=0.6457 (n=50)
+    accountant                     delta_nfep=0.6231 (n=50)
+    nurse                          delta_nfep=0.6231 (n=50)
+    editor                         delta_nfep=0.5969 (n=50)
+    farmer                         delta_nfep=0.5956 (n=50)
+    lawyer                         delta_nfep=0.5947 (n=50)
+    CEO                            delta_nfep=0.5820 (n=50)
+    sheriff                        delta_nfep=0.5805 (n=50)
+    supervisor                     delta_nfep=0.5793 (n=50)
+    construction worker            delta_nfep=0.5767 (n=50)
+    salesperson                    delta_nfep=0.5727 (n=50)
+    janitor                        delta_nfep=0.5708 (n=50)
+    mover                          delta_nfep=0.5681 (n=50)
+    librarian                      delta_nfep=0.5664 (n=50)
+    laborer                        delta_nfep=0.5655 (n=50)
+    driver                         delta_nfep=0.5488 (n=50)
+    carpenter                      delta_nfep=0.5432 (n=50)
+    tailor                         delta_nfep=0.5417 (n=50)
+    analyst                        delta_nfep=0.5304 (n=50)
+    physician                      delta_nfep=0.5158 (n=50)
+    auditor                        delta_nfep=0.5145 (n=50)
+    guard                          delta_nfep=0.5035 (n=50)
+    secretary                      delta_nfep=0.4915 (n=50)
+    writer                         delta_nfep=0.4741 (n=50)
+    cleaner                        delta_nfep=0.4699 (n=50)
+    developer                      delta_nfep=0.4687 (n=50)
+    housekeeper                    delta_nfep=0.4681 (n=50)
+    clerk                          delta_nfep=0.4637 (n=50)
+    cook                           delta_nfep=0.4570 (n=50)
+    counselor                      delta_nfep=0.4527 (n=50)
+    attendant                      delta_nfep=0.4446 (n=50)
+    receptionist                   delta_nfep=0.4437 (n=50)
+    baker                          delta_nfep=0.4286 (n=50)
+    teacher                        delta_nfep=0.4253 (n=50)
+    designer                       delta_nfep=0.4247 (n=50)
+    assistant                      delta_nfep=0.4246 (n=50)
+    manager                        delta_nfep=0.3904 (n=50)
+    hairdresser                    delta_nfep=0.3483 (n=50)
+    Kruskal-Wallis: H=843.71, p=0.0000*
+  [winoidentity/gemma-2-9b L31] 40 categories:
+    accountant                     delta_nfep=0.6851 (n=50)
+    mechanic                       delta_nfep=0.6715 (n=50)
+    editor                         delta_nfep=0.6351 (n=50)
+    chief                          delta_nfep=0.6300 (n=50)
+    cashier                        delta_nfep=0.6217 (n=50)
+    mover                          delta_nfep=0.6078 (n=50)
+    CEO                            delta_nfep=0.5931 (n=50)
+    carpenter                      delta_nfep=0.5913 (n=50)
+    janitor                        delta_nfep=0.5910 (n=50)
+    lawyer                         delta_nfep=0.5845 (n=50)
+    librarian                      delta_nfep=0.5814 (n=50)
+    sheriff                        delta_nfep=0.5767 (n=50)
+    driver                         delta_nfep=0.5735 (n=50)
+    counselor                      delta_nfep=0.5696 (n=50)
+    laborer                        delta_nfep=0.5686 (n=50)
+    farmer                         delta_nfep=0.5667 (n=50)
+    salesperson                    delta_nfep=0.5612 (n=50)
+    secretary                      delta_nfep=0.5560 (n=50)
+    writer                         delta_nfep=0.5512 (n=50)
+    nurse                          delta_nfep=0.5461 (n=50)
+    cleaner                        delta_nfep=0.5421 (n=50)
+    analyst                        delta_nfep=0.5403 (n=50)
+    construction worker            delta_nfep=0.5381 (n=50)
+    physician                      delta_nfep=0.5321 (n=50)
+    auditor                        delta_nfep=0.5316 (n=50)
+    guard                          delta_nfep=0.5220 (n=50)
+    supervisor                     delta_nfep=0.5213 (n=50)
+    tailor                         delta_nfep=0.5191 (n=50)
+    manager                        delta_nfep=0.5068 (n=50)
+    housekeeper                    delta_nfep=0.5049 (n=50)
+    developer                      delta_nfep=0.4822 (n=50)
+    receptionist                   delta_nfep=0.4785 (n=50)
+    clerk                          delta_nfep=0.4640 (n=50)
+    teacher                        delta_nfep=0.4614 (n=50)
+    attendant                      delta_nfep=0.4541 (n=50)
+    cook                           delta_nfep=0.4448 (n=50)
+    baker                          delta_nfep=0.4438 (n=50)
+    assistant                      delta_nfep=0.4298 (n=50)
+    designer                       delta_nfep=0.4232 (n=50)
+    hairdresser                    delta_nfep=0.3949 (n=50)
+    Kruskal-Wallis: H=596.89, p=0.0000*
+  [winoidentity/gemma-2-9b L9] 40 categories:
+    mover                          delta_nfep=0.6333 (n=50)
+    housekeeper                    delta_nfep=0.6271 (n=50)
+    assistant                      delta_nfep=0.6232 (n=50)
+    analyst                        delta_nfep=0.5961 (n=50)
+    janitor                        delta_nfep=0.5924 (n=50)
+    receptionist                   delta_nfep=0.5882 (n=50)
+    counselor                      delta_nfep=0.5827 (n=50)
+    hairdresser                    delta_nfep=0.5806 (n=50)
+    driver                         delta_nfep=0.5800 (n=50)
+    cook                           delta_nfep=0.5776 (n=50)
+    clerk                          delta_nfep=0.5747 (n=50)
+    nurse                          delta_nfep=0.5737 (n=50)
+    tailor                         delta_nfep=0.5720 (n=50)
+    sheriff                        delta_nfep=0.5717 (n=50)
+    librarian                      delta_nfep=0.5713 (n=50)
+    accountant                     delta_nfep=0.5669 (n=50)
+    attendant                      delta_nfep=0.5658 (n=50)
+    writer                         delta_nfep=0.5642 (n=50)
+    salesperson                    delta_nfep=0.5626 (n=50)
+    auditor                        delta_nfep=0.5624 (n=50)
+    cashier                        delta_nfep=0.5586 (n=50)
+    construction worker            delta_nfep=0.5581 (n=50)
+    mechanic                       delta_nfep=0.5581 (n=50)
+    supervisor                     delta_nfep=0.5575 (n=50)
+    chief                          delta_nfep=0.5574 (n=50)
+    CEO                            delta_nfep=0.5519 (n=50)
+    physician                      delta_nfep=0.5507 (n=50)
+    lawyer                         delta_nfep=0.5485 (n=50)
+    editor                         delta_nfep=0.5477 (n=50)
+    baker                          delta_nfep=0.5401 (n=50)
+    carpenter                      delta_nfep=0.5378 (n=50)
+    guard                          delta_nfep=0.5307 (n=50)
+    cleaner                        delta_nfep=0.5305 (n=50)
+    manager                        delta_nfep=0.5164 (n=50)
+    farmer                         delta_nfep=0.5149 (n=50)
+    teacher                        delta_nfep=0.5051 (n=50)
+    developer                      delta_nfep=0.4975 (n=50)
+    secretary                      delta_nfep=0.4894 (n=50)
+    laborer                        delta_nfep=0.4884 (n=50)
+    designer                       delta_nfep=0.4486 (n=50)
+    Kruskal-Wallis: H=338.96, p=0.0000*
+  [winoidentity/llama-3.1-8b L16] 40 categories:
+    accountant                     delta_nfep=0.6751 (n=50)
+    mechanic                       delta_nfep=0.6372 (n=50)
+    chief                          delta_nfep=0.6250 (n=50)
+    cashier                        delta_nfep=0.6224 (n=50)
+    nurse                          delta_nfep=0.6186 (n=50)
+    cleaner                        delta_nfep=0.6163 (n=50)
+    tailor                         delta_nfep=0.6099 (n=50)
+    janitor                        delta_nfep=0.6004 (n=50)
+    laborer                        delta_nfep=0.5977 (n=50)
+    farmer                         delta_nfep=0.5954 (n=50)
+    editor                         delta_nfep=0.5822 (n=50)
+    lawyer                         delta_nfep=0.5766 (n=50)
+    sheriff                        delta_nfep=0.5725 (n=50)
+    CEO                            delta_nfep=0.5705 (n=50)
+    mover                          delta_nfep=0.5641 (n=50)
+    counselor                      delta_nfep=0.5624 (n=50)
+    carpenter                      delta_nfep=0.5600 (n=50)
+    salesperson                    delta_nfep=0.5531 (n=50)
+    librarian                      delta_nfep=0.5520 (n=50)
+    assistant                      delta_nfep=0.5462 (n=50)
+    housekeeper                    delta_nfep=0.5415 (n=50)
+    attendant                      delta_nfep=0.5403 (n=50)
+    cook                           delta_nfep=0.5385 (n=50)
+    developer                      delta_nfep=0.5337 (n=50)
+    auditor                        delta_nfep=0.5279 (n=50)
+    construction worker            delta_nfep=0.5175 (n=50)
+    driver                         delta_nfep=0.5139 (n=50)
+    writer                         delta_nfep=0.5093 (n=50)
+    secretary                      delta_nfep=0.5025 (n=50)
+    physician                      delta_nfep=0.4965 (n=50)
+    manager                        delta_nfep=0.4718 (n=50)
+    supervisor                     delta_nfep=0.4638 (n=50)
+    analyst                        delta_nfep=0.4574 (n=50)
+    baker                          delta_nfep=0.4570 (n=50)
+    guard                          delta_nfep=0.4519 (n=50)
+    receptionist                   delta_nfep=0.4496 (n=50)
+    clerk                          delta_nfep=0.4276 (n=50)
+    teacher                        delta_nfep=0.4202 (n=50)
+    designer                       delta_nfep=0.3944 (n=50)
+    hairdresser                    delta_nfep=0.3813 (n=50)
+    Kruskal-Wallis: H=619.65, p=0.0000*
+  [winoidentity/llama-3.1-8b L24] 40 categories:
+    secretary                      delta_nfep=0.6097 (n=50)
+    nurse                          delta_nfep=0.5885 (n=50)
+    accountant                     delta_nfep=0.5851 (n=50)
+    mechanic                       delta_nfep=0.5844 (n=50)
+    cashier                        delta_nfep=0.5829 (n=50)
+    lawyer                         delta_nfep=0.5761 (n=50)
+    auditor                        delta_nfep=0.5712 (n=50)
+    janitor                        delta_nfep=0.5710 (n=50)
+    farmer                         delta_nfep=0.5683 (n=50)
+    carpenter                      delta_nfep=0.5673 (n=50)
+    librarian                      delta_nfep=0.5661 (n=50)
+    counselor                      delta_nfep=0.5632 (n=50)
+    sheriff                        delta_nfep=0.5631 (n=50)
+    cook                           delta_nfep=0.5548 (n=50)
+    attendant                      delta_nfep=0.5505 (n=50)
+    CEO                            delta_nfep=0.5460 (n=50)
+    chief                          delta_nfep=0.5439 (n=50)
+    cleaner                        delta_nfep=0.5415 (n=50)
+    driver                         delta_nfep=0.5407 (n=50)
+    housekeeper                    delta_nfep=0.5359 (n=50)
+    construction worker            delta_nfep=0.5351 (n=50)
+    mover                          delta_nfep=0.5349 (n=50)
+    assistant                      delta_nfep=0.5343 (n=50)
+    editor                         delta_nfep=0.5274 (n=50)
+    developer                      delta_nfep=0.5246 (n=50)
+    tailor                         delta_nfep=0.5206 (n=50)
+    guard                          delta_nfep=0.5196 (n=50)
+    physician                      delta_nfep=0.5187 (n=50)
+    laborer                        delta_nfep=0.5169 (n=50)
+    clerk                          delta_nfep=0.5108 (n=50)
+    salesperson                    delta_nfep=0.5107 (n=50)
+    writer                         delta_nfep=0.5101 (n=50)
+    supervisor                     delta_nfep=0.5085 (n=50)
+    manager                        delta_nfep=0.5059 (n=50)
+    receptionist                   delta_nfep=0.5031 (n=50)
+    baker                          delta_nfep=0.4969 (n=50)
+    analyst                        delta_nfep=0.4772 (n=50)
+    hairdresser                    delta_nfep=0.4500 (n=50)
+    teacher                        delta_nfep=0.4348 (n=50)
+    designer                       delta_nfep=0.3753 (n=50)
+    Kruskal-Wallis: H=426.42, p=0.0000*
+  [winoidentity/llama-3.1-8b L8] 40 categories:
+    mover                          delta_nfep=0.6598 (n=50)
+    nurse                          delta_nfep=0.6378 (n=50)
+    chief                          delta_nfep=0.6219 (n=50)
+    laborer                        delta_nfep=0.6095 (n=50)
+    housekeeper                    delta_nfep=0.6081 (n=50)
+    auditor                        delta_nfep=0.6076 (n=50)
+    farmer                         delta_nfep=0.6041 (n=50)
+    cashier                        delta_nfep=0.6017 (n=50)
+    lawyer                         delta_nfep=0.5981 (n=50)
+    accountant                     delta_nfep=0.5963 (n=50)
+    janitor                        delta_nfep=0.5896 (n=50)
+    analyst                        delta_nfep=0.5879 (n=50)
+    CEO                            delta_nfep=0.5813 (n=50)
+    assistant                      delta_nfep=0.5774 (n=50)
+    cleaner                        delta_nfep=0.5614 (n=50)
+    mechanic                       delta_nfep=0.5599 (n=50)
+    sheriff                        delta_nfep=0.5553 (n=50)
+    librarian                      delta_nfep=0.5550 (n=50)
+    receptionist                   delta_nfep=0.5484 (n=50)
+    developer                      delta_nfep=0.5483 (n=50)
+    writer                         delta_nfep=0.5423 (n=50)
+    counselor                      delta_nfep=0.5417 (n=50)
+    hairdresser                    delta_nfep=0.5404 (n=50)
+    salesperson                    delta_nfep=0.5397 (n=50)
+    cook                           delta_nfep=0.5327 (n=50)
+    manager                        delta_nfep=0.5274 (n=50)
+    attendant                      delta_nfep=0.5104 (n=50)
+    editor                         delta_nfep=0.5062 (n=50)
+    construction worker            delta_nfep=0.5042 (n=50)
+    carpenter                      delta_nfep=0.4927 (n=50)
+    tailor                         delta_nfep=0.4908 (n=50)
+    supervisor                     delta_nfep=0.4768 (n=50)
+    physician                      delta_nfep=0.4711 (n=50)
+    teacher                        delta_nfep=0.4587 (n=50)
+    driver                         delta_nfep=0.4574 (n=50)
+    clerk                          delta_nfep=0.4573 (n=50)
+    guard                          delta_nfep=0.4120 (n=50)
+    baker                          delta_nfep=0.3929 (n=50)
+    secretary                      delta_nfep=0.3894 (n=50)
+    designer                       delta_nfep=0.3823 (n=50)
+    Kruskal-Wallis: H=747.21, p=0.0000*
+
+  Stats saved: /root/AMBIT/outputs/figures/sae_statistical_tests.json
+  Figures in: /root/AMBIT/outputs/figures

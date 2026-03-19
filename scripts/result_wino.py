@@ -26,6 +26,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 OUTPUT_DIR = PROJECT_ROOT / "outputs"
 ANALYSIS_DIR = OUTPUT_DIR / "analysis"
+FLIP_DOMAINS = {"lbox", "mind"}  # higher score = worse
 FIGURE_DIR = OUTPUT_DIR / "figures"
 
 GENDERS = ["male", "female"]
@@ -53,7 +54,7 @@ def load_winoidentity_csv(filepath):
     MALE_PRONOUNS = {"he", "him", "his", "himself"}
 
     probes = []
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, "r", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         for row in reader:
             occs = row.get("occs_in_samples", "[]")
@@ -336,7 +337,7 @@ def collect_all(probes):
                         if 0 <= idx < len(probes):
                             r["demographic"] = probes[idx]["demographic"]  # now includes gender
                     metrics = compute_metrics(raw)
-                    all_models[model] = {"metrics": metrics, "source": "raw_recomputed_with_gender"}
+                    all_models[model] = {"metrics": metrics, "raw": raw, "source": "raw_recomputed_with_gender"}
                     print(f"  Recomputed with gender: {model}")
             except Exception as e:
                 print(f"  Failed raw: {model} — {e}")
@@ -392,7 +393,7 @@ def collect_all(probes):
             answered = sum(1 for r in results if r.get("chosen"))
             print(f"    {len(all_records)} records → {answered} answered → {valid} validated")
 
-            all_models[model] = {"metrics": metrics, "source": f"batch_{provider}"}
+            all_models[model] = {"metrics": metrics, "raw": results, "source": f"batch_{provider}"}
 
     # Filter out test-only models (< 100 records)
     filtered = {}
@@ -421,7 +422,7 @@ def cross_context_with_scoring(wino_models, out_dir):
 
     # Load JobFair and LBOX summaries
     scoring_data = {}
-    for ds in ["jobfair", "lbox"]:
+    for ds in ["jobfair", "lbox", "mind"]:
         path = ANALYSIS_DIR / ds / "summary.json"
         if path.exists():
             with open(path) as f:
@@ -485,7 +486,7 @@ def cross_context_with_scoring(wino_models, out_dir):
                             trait_score_dev[p] = []
                         dev = stats["mean_score"] - s_bl
                         # LBOX: flip sign (higher score = worse for defendant)
-                        if ds == "lbox":
+                        if ds in FLIP_DOMAINS:
                             dev = -dev
                         trait_score_dev[p].append(dev)
             trait_score_dev = {t: np.mean(vs) for t, vs in trait_score_dev.items() if len(vs) >= 2}
@@ -501,7 +502,8 @@ def cross_context_with_scoring(wino_models, out_dir):
             y = [trait_score_dev[t] for t in common]
             rho, p_val = sp.spearmanr(x, y)
 
-            ds_label = "JobFair (score)" if ds == "jobfair" else "LBOX (severity, flipped)"
+            ds_labels = {"jobfair": "JobFair (score)", "lbox": "LBOX (severity, flipped)", "mind": "Mind (severity, flipped)"}
+            ds_label = ds_labels.get(ds, ds)
             print(f"    {wmodel} WinoIdentity ↔ {ds_label} [{score_model}]: ρ={rho:.3f}, p={p_val:.4f}")
 
             key = f"{wmodel}_{ds}"
@@ -674,10 +676,18 @@ def main():
     section_wino_interaction(all_models)
     section_wino_model_comparison(all_models, out_dir)
 
+    # ── Khan et al. (COLM 2025) aligned analysis ──
+    print(f"\n{'='*60}")
+    print("  WinoBias-Aligned Analysis (Type / Stereotype / Occupation)")
+    print(f"{'='*60}")
+    section_wino_by_type(all_models, out_dir)
+    section_wino_by_stereotype(all_models, out_dir)
+    section_wino_by_occupation(all_models, out_dir)
+
     # Cross-context comparison
-    if any(ds_dir.exists() for ds_dir in [ANALYSIS_DIR / "jobfair", ANALYSIS_DIR / "lbox"]):
+    if any(ds_dir.exists() for ds_dir in [ANALYSIS_DIR / "jobfair", ANALYSIS_DIR / "lbox", ANALYSIS_DIR / "mind"]):
         print(f"\n{'='*60}")
-        print("  Cross-Context: WinoIdentity ↔ JobFair/LBOX")
+        print("  Cross-Context: WinoIdentity ↔ JobFair/LBOX/Mind")
         print(f"{'='*60}")
         cross = cross_context_with_scoring(all_models, out_dir)
         if cross:
@@ -1045,6 +1055,321 @@ def section_wino_sae(all_models, sae_dirs, out_dir):
         fig.savefig(path)
         plt.close(fig)
         print(f"      Saved: {path}")
+
+
+# ═══════════════════════════════════════
+# WINOBIAS-ALIGNED ANALYSIS
+# ═══════════════════════════════════════
+
+def _get_raw(data):
+    """Get raw results from model data. Returns list or empty."""
+    return data.get("raw", [])
+
+
+def _acc(results):
+    """Compute accuracy from list of result dicts."""
+    valid = [r for r in results if r.get("correct") is not None]
+    if not valid:
+        return None, 0
+    return sum(1 for r in valid if r["correct"]) / len(valid), len(valid)
+
+
+def section_wino_by_type(all_models, out_dir):
+    """Analyze accuracy separately for Type-1 (semantic) vs Type-2 (syntactic)."""
+    print(f"\n  --- Type-1 (Semantic) vs Type-2 (Syntactic) ---")
+    plt = setup_plt()
+
+    type_results = {}
+    for model, data in sorted(all_models.items()):
+        raw = _get_raw(data)
+        if not raw:
+            continue
+
+        by_type = defaultdict(list)
+        for r in raw:
+            tt = r.get("task_type", "")
+            if tt:
+                by_type[tt].append(r)
+
+        if len(by_type) < 2:
+            continue
+
+        type_accs = {}
+        for tt, records in sorted(by_type.items()):
+            acc, n = _acc(records)
+            if acc is not None:
+                type_accs[tt] = {"acc": acc, "n": n}
+
+        if not type_accs:
+            continue
+
+        # Per-trait accuracy gap between Type-1 and Type-2
+        trait_gap = {}
+        for tt in by_type:
+            by_demo = defaultdict(list)
+            for r in by_type[tt]:
+                demo = r.get("demographic", [])
+                key = "+".join(sorted(demo)) if demo else "(baseline)"
+                by_demo[key].append(r)
+            for key, recs in by_demo.items():
+                acc, n = _acc(recs)
+                if acc is not None and n >= 10:
+                    if key not in trait_gap:
+                        trait_gap[key] = {}
+                    trait_gap[key][tt] = acc
+
+        # Print summary
+        print(f"\n    [{model}]")
+        for tt, stats in sorted(type_accs.items()):
+            print(f"      {tt}: acc={stats['acc']:.4f} (n={stats['n']})")
+
+        # Find identities with largest Type gap
+        gaps = []
+        for key, accs in trait_gap.items():
+            types = sorted(accs.keys())
+            if len(types) >= 2:
+                gap = accs[types[0]] - accs[types[1]]  # Type-1 - Type-2
+                gaps.append({"identity": key, "type1": accs.get(types[0]), "type2": accs.get(types[1]), "gap": gap})
+
+        if gaps:
+            gaps_sorted = sorted(gaps, key=lambda x: x["gap"])
+            print(f"      Largest Type-1 disadvantage (Type1 - Type2):")
+            for g in gaps_sorted[:3]:
+                print(f"        {g['identity']:30s} T1={g['type1']:.4f} T2={g['type2']:.4f} gap={g['gap']:+.4f}")
+            print(f"      Smallest gap:")
+            for g in gaps_sorted[-3:]:
+                print(f"        {g['identity']:30s} T1={g['type1']:.4f} T2={g['type2']:.4f} gap={g['gap']:+.4f}")
+
+        type_results[model] = {"type_accs": type_accs, "n_gaps": len(gaps)}
+
+    # Cross-model Type comparison plot
+    models_with_types = [m for m in sorted(type_results.keys())
+                        if len(type_results[m]["type_accs"]) >= 2]
+    if len(models_with_types) >= 2:
+        fig, ax = plt.subplots(figsize=(12, 6))
+        x = np.arange(len(models_with_types))
+        width = 0.35
+        types = sorted(set(t for m in models_with_types for t in type_results[m]["type_accs"]))
+        for i, tt in enumerate(types):
+            vals = [type_results[m]["type_accs"].get(tt, {}).get("acc", 0) for m in models_with_types]
+            ax.bar(x + i * width, vals, width, label=tt, alpha=0.8)
+        ax.set_xticks(x + width / 2)
+        ax.set_xticklabels(models_with_types, rotation=45, ha="right")
+        ax.set_ylabel("Accuracy")
+        ax.set_title("WinoIdentity: Type-1 (Semantic) vs Type-2 (Syntactic)")
+        ax.legend()
+        ax.set_ylim(0, 1)
+        plt.tight_layout()
+        path = out_dir / "wino_type1_vs_type2.png"
+        fig.savefig(path)
+        plt.close(fig)
+        print(f"\n    Saved: {path}")
+
+    return type_results
+
+
+def section_wino_by_stereotype(all_models, out_dir):
+    """Analyze accuracy by pro-stereotypical vs anti-stereotypical."""
+    print(f"\n  --- Pro-Stereotypical vs Anti-Stereotypical ---")
+    plt = setup_plt()
+
+    stereo_results = {}
+    for model, data in sorted(all_models.items()):
+        raw = _get_raw(data)
+        if not raw:
+            continue
+
+        by_stereo = defaultdict(list)
+        for r in raw:
+            sl = r.get("stereotype_label", "").lower().strip()
+            if "pro" in sl and "anti" not in sl:
+                by_stereo["pro"].append(r)
+            elif "anti" in sl:
+                by_stereo["anti"].append(r)
+
+        if len(by_stereo) < 2:
+            continue
+
+        pro_acc, pro_n = _acc(by_stereo["pro"])
+        anti_acc, anti_n = _acc(by_stereo["anti"])
+        if pro_acc is None or anti_acc is None:
+            continue
+
+        gap = pro_acc - anti_acc
+        # Z-test for proportion difference
+        p_hat = (pro_acc * pro_n + anti_acc * anti_n) / (pro_n + anti_n)
+        se = np.sqrt(p_hat * (1 - p_hat) * (1/pro_n + 1/anti_n)) if 0 < p_hat < 1 else 1
+        z_stat = gap / se if se > 0 else 0
+        p_val = 2 * (1 - sp.norm.cdf(abs(z_stat)))
+
+        print(f"    [{model}] pro={pro_acc:.4f}(n={pro_n}) anti={anti_acc:.4f}(n={anti_n}) "
+              f"gap={gap:+.4f} z={z_stat:.2f} p={p_val:.4f}{'*' if p_val < 0.05 else ''}")
+
+        # Per-trait breakdown: which traits have largest pro-anti gap?
+        trait_stereo = defaultdict(lambda: {"pro": [], "anti": []})
+        for label in ["pro", "anti"]:
+            for r in by_stereo[label]:
+                if r.get("correct") is None:
+                    continue
+                demo = r.get("demographic", [])
+                for part in demo:
+                    if part in ALL_TRAITS or part in GENDERS:
+                        trait_stereo[part][label].append(r["correct"])
+
+        trait_gaps = []
+        for trait, data_dict in trait_stereo.items():
+            pro_vals = data_dict["pro"]
+            anti_vals = data_dict["anti"]
+            if len(pro_vals) >= 10 and len(anti_vals) >= 10:
+                pro_a = sum(pro_vals) / len(pro_vals)
+                anti_a = sum(anti_vals) / len(anti_vals)
+                trait_gaps.append({"trait": trait, "pro": pro_a, "anti": anti_a, "gap": pro_a - anti_a})
+
+        if trait_gaps:
+            trait_gaps.sort(key=lambda x: x["gap"], reverse=True)
+            print(f"      Traits with largest pro>anti advantage:")
+            for t in trait_gaps[:3]:
+                print(f"        {t['trait']:20s} pro={t['pro']:.4f} anti={t['anti']:.4f} gap={t['gap']:+.4f}")
+            print(f"      Traits with smallest gap:")
+            for t in trait_gaps[-3:]:
+                print(f"        {t['trait']:20s} pro={t['pro']:.4f} anti={t['anti']:.4f} gap={t['gap']:+.4f}")
+
+        stereo_results[model] = {
+            "pro_acc": pro_acc, "anti_acc": anti_acc, "gap": gap, "p_value": p_val,
+        }
+
+    # Plot
+    models_list = sorted(stereo_results.keys())
+    if models_list:
+        fig, ax = plt.subplots(figsize=(12, 6))
+        x = np.arange(len(models_list))
+        width = 0.35
+        pro_vals = [stereo_results[m]["pro_acc"] for m in models_list]
+        anti_vals = [stereo_results[m]["anti_acc"] for m in models_list]
+        ax.bar(x - width/2, pro_vals, width, label="Pro-stereotypical", color="#388e3c", alpha=0.8)
+        ax.bar(x + width/2, anti_vals, width, label="Anti-stereotypical", color="#d32f2f", alpha=0.8)
+        ax.set_xticks(x)
+        ax.set_xticklabels(models_list, rotation=45, ha="right")
+        ax.set_ylabel("Accuracy")
+        ax.set_title("WinoIdentity: Pro vs Anti-Stereotypical Accuracy")
+        ax.legend()
+        ax.set_ylim(0, 1)
+        plt.tight_layout()
+        path = out_dir / "wino_pro_vs_anti.png"
+        fig.savefig(path)
+        plt.close(fig)
+        print(f"\n    Saved: {path}")
+
+    return stereo_results
+
+
+def section_wino_by_occupation(all_models, out_dir):
+    """Analyze accuracy by referent occupation — which occupations show most identity bias?"""
+    print(f"\n  --- Accuracy by Occupation ---")
+    plt = setup_plt()
+
+    occ_results = {}
+    for model, data in sorted(all_models.items()):
+        raw = _get_raw(data)
+        if not raw:
+            continue
+
+        # Per occupation accuracy
+        by_occ = defaultdict(list)
+        for r in raw:
+            occ = r.get("referent_occ", "")
+            if occ and r.get("correct") is not None:
+                by_occ[occ].append(r["correct"])
+
+        if not by_occ:
+            continue
+
+        occ_accs = {occ: sum(vs)/len(vs) for occ, vs in by_occ.items() if len(vs) >= 20}
+        if not occ_accs:
+            continue
+
+        sorted_occs = sorted(occ_accs.items(), key=lambda x: x[1])
+        disparity = sorted_occs[-1][1] - sorted_occs[0][1]
+
+        print(f"\n    [{model}] {len(occ_accs)} occupations, disparity={disparity:.4f}")
+        print(f"      Bottom 5:")
+        for occ, acc in sorted_occs[:5]:
+            print(f"        {occ:25s} {acc:.4f} (n={len(by_occ[occ])})")
+        print(f"      Top 5:")
+        for occ, acc in sorted_occs[-5:]:
+            print(f"        {occ:25s} {acc:.4f} (n={len(by_occ[occ])})")
+
+        # Per-occupation identity disparity: for each occupation, max-min accuracy across identities
+        occ_id_disparity = {}
+        by_occ_id = defaultdict(lambda: defaultdict(list))
+        for r in raw:
+            occ = r.get("referent_occ", "")
+            demo = r.get("demographic", [])
+            key = "+".join(sorted(demo)) if demo else "(baseline)"
+            if occ and r.get("correct") is not None:
+                by_occ_id[occ][key].append(r["correct"])
+
+        for occ, id_dict in by_occ_id.items():
+            id_accs = {k: sum(v)/len(v) for k, v in id_dict.items() if len(v) >= 5}
+            if len(id_accs) >= 5:
+                occ_id_disparity[occ] = max(id_accs.values()) - min(id_accs.values())
+
+        if occ_id_disparity:
+            top_disp = sorted(occ_id_disparity.items(), key=lambda x: x[1], reverse=True)[:5]
+            print(f"      Occupations with highest identity disparity:")
+            for occ, disp in top_disp:
+                print(f"        {occ:25s} identity_disparity={disp:.4f}")
+
+        occ_results[model] = {"n_occs": len(occ_accs), "disparity": disparity,
+                              "worst_occ": sorted_occs[0][0], "best_occ": sorted_occs[-1][0]}
+
+    # Heatmap: top-10 most biased occupations × models
+    all_occs = set()
+    all_occ_data = {}
+    for model, data in sorted(all_models.items()):
+        raw = _get_raw(data)
+        if not raw:
+            continue
+        by_occ = defaultdict(list)
+        for r in raw:
+            occ = r.get("referent_occ", "")
+            if occ and r.get("correct") is not None:
+                by_occ[occ].append(r["correct"])
+        occ_accs = {occ: sum(vs)/len(vs) for occ, vs in by_occ.items() if len(vs) >= 20}
+        all_occ_data[model] = occ_accs
+        all_occs.update(occ_accs.keys())
+
+    if all_occ_data and len(all_occs) > 5:
+        # Find occupations with highest cross-model variance
+        occ_vars = {}
+        for occ in all_occs:
+            vals = [all_occ_data[m].get(occ) for m in all_occ_data if occ in all_occ_data[m]]
+            if len(vals) >= 3:
+                occ_vars[occ] = np.var(vals)
+        top_occs = [o for o, _ in sorted(occ_vars.items(), key=lambda x: x[1], reverse=True)[:20]]
+
+        if top_occs:
+            models_list = sorted(all_occ_data.keys())
+            matrix = np.zeros((len(top_occs), len(models_list)))
+            for mi, model in enumerate(models_list):
+                for oi, occ in enumerate(top_occs):
+                    matrix[oi, mi] = all_occ_data[model].get(occ, np.nan)
+
+            fig, ax = plt.subplots(figsize=(14, 10))
+            im = ax.imshow(matrix, cmap="RdYlGn", aspect="auto", vmin=0.4, vmax=1.0)
+            ax.set_xticks(range(len(models_list)))
+            ax.set_xticklabels(models_list, rotation=45, ha="right", fontsize=9)
+            ax.set_yticks(range(len(top_occs)))
+            ax.set_yticklabels(top_occs, fontsize=8)
+            ax.set_title("WinoIdentity: Accuracy by Occupation (top-20 most variable)")
+            plt.colorbar(im, ax=ax, shrink=0.6, label="Accuracy")
+            plt.tight_layout()
+            path = out_dir / "wino_occupation_heatmap.png"
+            fig.savefig(path)
+            plt.close(fig)
+            print(f"\n    Saved: {path}")
+
+    return occ_results
 
 
 if __name__ == "__main__":

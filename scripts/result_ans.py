@@ -34,6 +34,12 @@ TRAIT_CATEGORIES = {
 ALL_TRAITS = [t for ts in TRAIT_CATEGORIES.values() for t in ts]
 GENDERS = ["male", "female"]
 
+# Domains where higher score = WORSE for the subject (flip sign for cross-comparison)
+# JobFair: higher = better (favorable) → no flip
+# LBOX: higher = more severe sentence → flip
+# Mind: higher = more severe mental issues → flip
+NEGATIVE_DOMAINS = {"lbox", "mind"}
+
 # Attribute meta-categories for [D] reversal analysis
 ATTR_META = {}
 for cat, traits in TRAIT_CATEGORIES.items():
@@ -96,6 +102,7 @@ def build_score_table(rows, models):
                         "condition": condition,
                         "score": float(val),
                         "demo": demo,
+                        "referent_occ": r.get("referent_occ", ""),
                     })
                 except ValueError:
                     pass
@@ -453,119 +460,133 @@ def section_d(tables, out_dir):
     print("="*70)
 
     plt = setup_plt()
-    if "jobfair" not in tables or "lbox" not in tables:
-        print("  Need both jobfair and lbox data.")
+
+    # Build all scoring domains (exclude winoidentity)
+    scoring_domains = sorted([d for d in tables.keys() if d != "winoidentity"])
+    if len(scoring_domains) < 2:
+        print("  Need at least 2 scoring domains.")
         return {}
 
-    t_job = tables["jobfair"]
-    t_lbox = tables["lbox"]
-    models = sorted(set(r["model"] for r in t_job) & set(r["model"] for r in t_lbox))
+    # Compute per-identity deviation for each domain × model
+    def _dev(table, model, domain):
+        neutral = mean_safe(scores_of(table, model=model, condition="neutral"))
+        if neutral is None:
+            return {}
+        devs = {}
+        by_demo = defaultdict(list)
+        for r in table:
+            if r["model"] == model and r["condition"] == "intersectional":
+                demo = f"{r['gender']}+{r['attribute']}" if r["gender"] and r["attribute"] else None
+                if demo:
+                    by_demo[demo].append(r["score"])
+        for demo, scores in by_demo.items():
+            devs[demo] = np.mean(scores) - neutral
+        # Flip sign for NEGATIVE_DOMAINS
+        if domain in NEGATIVE_DOMAINS:
+            devs = {k: -v for k, v in devs.items()}
+        return devs
 
     results = {}
-    for model in models:
-        # Compute per-identity deviation from neutral in each domain
-        def _dev(table, model):
-            neutral = mean_safe(scores_of(table, model=model, condition="neutral"))
-            if neutral is None:
-                return {}
-            devs = {}
-            by_demo = defaultdict(list)
-            for r in table:
-                if r["model"] == model and r["condition"] == "intersectional":
-                    demo = f"{r['gender']}+{r['attribute']}" if r["gender"] and r["attribute"] else None
-                    if demo:
-                        by_demo[demo].append(r["score"])
-            for demo, scores in by_demo.items():
-                devs[demo] = np.mean(scores) - neutral
-            return devs
 
-        job_dev = _dev(t_job, model)
-        lbox_dev_raw = _dev(t_lbox, model)
-        # LBOX: higher score = more severe sentence = WORSE for defendant
-        # Flip sign so positive deviation = favorable in both contexts
-        lbox_dev = {k: -v for k, v in lbox_dev_raw.items()}
-        common = sorted(set(job_dev.keys()) & set(lbox_dev.keys()))
-        if not common:
-            continue
+    # Compare all pairs: primary = jobfair↔lbox, also jobfair↔mind, lbox↔mind
+    for di in range(len(scoring_domains)):
+        for dj in range(di+1, len(scoring_domains)):
+            d1, d2 = scoring_domains[di], scoring_domains[dj]
+            models_both = sorted(set(r["model"] for r in tables[d1]) & set(r["model"] for r in tables[d2]))
 
-        reversals = []
-        for ident in common:
-            j, l = job_dev[ident], lbox_dev[ident]
-            is_reversal = (j * l < 0) if (abs(j) > 0.01 and abs(l) > 0.01) else False
-            mag = abs(j - l)
-            # Parse attribute
-            parts = ident.split("+")
-            attr = parts[1] if len(parts) == 2 else parts[0]
-            meta_cat = ATTR_META.get(attr, "other")
-            if mag > 0.5:
-                strength = "strong"
-            elif mag > 0.1:
-                strength = "weak"
-            else:
-                strength = "near-tie"
-            reversals.append({
-                "identity": ident, "job_dev": round(j, 4), "lbox_dev": round(l, 4),
-                "reversal": is_reversal, "magnitude": round(mag, 4),
-                "strength": strength, "attribute": attr, "meta_category": meta_cat,
-            })
+            if not models_both:
+                continue
 
-        n_rev = sum(1 for r in reversals if r["reversal"])
-        n_strong = sum(1 for r in reversals if r["reversal"] and r["strength"] == "strong")
-        n_weak = sum(1 for r in reversals if r["reversal"] and r["strength"] == "weak")
+            print(f"\n  --- {d1} ↔ {d2} ---")
 
-        # Pearson correlation of deviations + bootstrap CI
-        x = [job_dev[k] for k in common]
-        y = [lbox_dev[k] for k in common]
-        corr, p_corr = sp.pearsonr(x, y)
-        ci_lo, ci_hi = bootstrap_ci(x, y, stat_func=lambda a,b: sp.pearsonr(a,b)[0])
+            for model in models_both:
+                dev1 = _dev(tables[d1], model, d1)
+                dev2 = _dev(tables[d2], model, d2)
+                common = sorted(set(dev1.keys()) & set(dev2.keys()))
+                if not common:
+                    continue
 
-        print(f"\n  [{model}]")
-        print(f"    Reversals: {n_rev}/{len(common)} ({n_rev/len(common)*100:.0f}%)")
-        print(f"    Strong={n_strong} Weak={n_weak} Near-tie={sum(1 for r in reversals if r['strength']=='near-tie')}")
-        print(f"    Pearson r={corr:.3f} [{ci_lo:.3f}, {ci_hi:.3f}] (p={p_corr:.4f})")
+                reversals = []
+                for ident in common:
+                    v1, v2 = dev1[ident], dev2[ident]
+                    is_reversal = (v1 * v2 < 0) if (abs(v1) > 0.01 and abs(v2) > 0.01) else False
+                    mag = abs(v1 - v2)
+                    parts = ident.split("+")
+                    attr = parts[1] if len(parts) == 2 else parts[0]
+                    meta_cat = ATTR_META.get(attr, "other")
+                    if mag > 0.5:
+                        strength = "strong"
+                    elif mag > 0.1:
+                        strength = "weak"
+                    else:
+                        strength = "near-tie"
+                    reversals.append({
+                        "identity": ident, f"{d1}_dev": round(v1, 4), f"{d2}_dev": round(v2, 4),
+                        "reversal": is_reversal, "magnitude": round(mag, 4),
+                        "strength": strength, "attribute": attr, "meta_category": meta_cat,
+                    })
 
-        # ANOVA by meta-category
-        by_cat = defaultdict(list)
-        for r in reversals:
-            if r["reversal"]:
-                by_cat[r["meta_category"]].append(r["magnitude"])
-        if len(by_cat) >= 2:
-            groups = [v for v in by_cat.values() if len(v) >= 2]
-            if len(groups) >= 2:
-                H, p_kw = sp.kruskal(*groups)
-                print(f"    Reversal magnitude by category: Kruskal-Wallis H={H:.2f}, p={p_kw:.4f}")
-                for cat, mags in sorted(by_cat.items()):
-                    print(f"      {cat:15s} mean_mag={np.mean(mags):.3f} (n={len(mags)})")
+                n_rev = sum(1 for r in reversals if r["reversal"])
+                n_strong = sum(1 for r in reversals if r["reversal"] and r["strength"] == "strong")
+                n_weak = sum(1 for r in reversals if r["reversal"] and r["strength"] == "weak")
 
-        # For low-reversal models, show which DO reverse
-        if n_rev < len(common) * 0.3:
-            rev_cases = [r for r in reversals if r["reversal"]]
-            print(f"    Reversal cases (minority pattern):")
-            for r in sorted(rev_cases, key=lambda x: -x["magnitude"])[:10]:
-                print(f"      {r['identity']:30s} job={r['job_dev']:+.3f} lbox={r['lbox_dev']:+.3f} "
-                      f"mag={r['magnitude']:.3f} [{r['meta_category']}]")
+                # Pearson correlation + bootstrap CI
+                x = [dev1[k] for k in common]
+                y = [dev2[k] for k in common]
+                corr, p_corr = sp.pearsonr(x, y)
+                ci_lo, ci_hi = bootstrap_ci(x, y, stat_func=lambda a,b: sp.pearsonr(a,b)[0])
 
-        results[model] = {"reversals": reversals, "pearson_r": float(corr), "pearson_p": float(p_corr),
-                          "pearson_ci": [ci_lo, ci_hi],
-                          "n_reversals": n_rev, "n_total": len(common)}
+                print(f"\n  [{model}]")
+                print(f"    Reversals: {n_rev}/{len(common)} ({n_rev/len(common)*100:.0f}%)")
+                print(f"    Strong={n_strong} Weak={n_weak} Near-tie={sum(1 for r in reversals if r['strength']=='near-tie')}")
+                print(f"    Pearson r={corr:.3f} [{ci_lo:.3f}, {ci_hi:.3f}] (p={p_corr:.4f})")
 
-        # Scatter plot
-        fig, ax = plt.subplots(figsize=(9, 9))
-        colors = ["#d32f2f" if r["reversal"] else "#1976d2" for r in reversals]
-        ax.scatter([r["job_dev"] for r in reversals], [r["lbox_dev"] for r in reversals],
-                  c=colors, alpha=0.6, s=30)
-        for r in reversals:
-            if r["magnitude"] > 0.3:
-                ax.annotate(r["identity"], (r["job_dev"], r["lbox_dev"]), fontsize=6, alpha=0.7)
-        ax.axhline(0, color="gray", linewidth=0.5)
-        ax.axvline(0, color="gray", linewidth=0.5)
-        lim = max(max(abs(r["job_dev"]) for r in reversals), max(abs(r["lbox_dev"]) for r in reversals)) * 1.2
-        ax.set_xlim(-lim, lim); ax.set_ylim(-lim, lim)
-        ax.set_xlabel("JobFair deviation"); ax.set_ylabel("LBOX deviation")
-        ax.set_title(f"Cross-Context: {model} (r={corr:.3f}, reversals={n_rev}/{len(common)})")
-        plt.tight_layout()
-        fig.savefig(out_dir / f"cross_context_{model}.png")
-        plt.close(fig)
+                # KW by meta-category
+                by_cat = defaultdict(list)
+                for r in reversals:
+                    if r["reversal"]:
+                        by_cat[r["meta_category"]].append(r["magnitude"])
+                if len(by_cat) >= 2:
+                    groups = [v for v in by_cat.values() if len(v) >= 2]
+                    if len(groups) >= 2:
+                        H, p_kw = sp.kruskal(*groups)
+                        print(f"    Reversal magnitude by category: Kruskal-Wallis H={H:.2f}, p={p_kw:.4f}")
+                        for cat, mags in sorted(by_cat.items()):
+                            print(f"      {cat:15s} mean_mag={np.mean(mags):.3f} (n={len(mags)})")
+
+                # Low-reversal detail
+                if n_rev < len(common) * 0.3:
+                    rev_cases = [r for r in reversals if r["reversal"]]
+                    print(f"    Reversal cases (minority pattern):")
+                    for r in sorted(rev_cases, key=lambda x: -x["magnitude"])[:10]:
+                        print(f"      {r['identity']:30s} {d1}={r[f'{d1}_dev']:+.3f} {d2}={r[f'{d2}_dev']:+.3f} "
+                              f"mag={r['magnitude']:.3f} [{r['meta_category']}]")
+
+                key = f"{d1}_{d2}_{model}"
+                results[key] = {"reversals": reversals, "pearson_r": float(corr), "pearson_p": float(p_corr),
+                                "pearson_ci": [ci_lo, ci_hi],
+                                "n_reversals": n_rev, "n_total": len(common),
+                                "domain_1": d1, "domain_2": d2}
+
+                # Scatter plot
+                fig, ax = plt.subplots(figsize=(9, 9))
+                colors = ["#d32f2f" if r["reversal"] else "#1976d2" for r in reversals]
+                ax.scatter([r[f"{d1}_dev"] for r in reversals], [r[f"{d2}_dev"] for r in reversals],
+                          c=colors, alpha=0.6, s=30)
+                for r in reversals:
+                    if r["magnitude"] > 0.3:
+                        ax.annotate(r["identity"], (r[f"{d1}_dev"], r[f"{d2}_dev"]), fontsize=6, alpha=0.7)
+                ax.axhline(0, color="gray", linewidth=0.5)
+                ax.axvline(0, color="gray", linewidth=0.5)
+                all_vals = [r[f"{d1}_dev"] for r in reversals] + [r[f"{d2}_dev"] for r in reversals]
+                lim = max(abs(v) for v in all_vals) * 1.2 if all_vals else 1
+                ax.set_xlim(-lim, lim); ax.set_ylim(-lim, lim)
+                ax.set_xlabel(f"{d1} deviation (+ = favorable)")
+                ax.set_ylabel(f"{d2} deviation (+ = favorable)")
+                ax.set_title(f"Cross-Context: {model} {d1}↔{d2} (r={corr:.3f}, rev={n_rev}/{len(common)})")
+                plt.tight_layout()
+                fig.savefig(out_dir / f"cross_context_{d1}_{d2}_{model}.png")
+                plt.close(fig)
 
     return results
 
@@ -619,7 +640,7 @@ def section_e(tables, out_dir):
                 continue
 
             # LBOX: higher score = more severe = WORSE. Flip so positive = favorable.
-            if domain == "lbox":
+            if domain in FLIP_DOMAINS:
                 z_devs = {k: -v for k, v in z_devs.items()}
 
             max_id = max(z_devs, key=z_devs.get)
@@ -648,11 +669,11 @@ def section_e(tables, out_dir):
                     matrix[ti, mi] = np.mean(trait_z) - z_bl
 
         # LBOX: flip sign so positive = favorable
-        if domain == "lbox":
+        if domain in FLIP_DOMAINS:
             matrix = -matrix
 
         vmax = max(abs(matrix.min()), abs(matrix.max())) or 0.5
-        sign_label = "(positive = favorable)" if domain == "lbox" else "(z-score deviation from neutral)"
+        sign_label = "(positive = favorable)" if domain in FLIP_DOMAINS else "(z-score deviation from neutral)"
         im = ax.imshow(matrix, cmap="RdBu_r", vmin=-vmax, vmax=vmax, aspect="auto")
         ax.set_xticks(range(len(models)))
         ax.set_xticklabels(models, rotation=45, ha="right", fontsize=9)
@@ -739,6 +760,185 @@ def section_f(tables, out_dir):
 # [G] SUMMARY TABLE FOR PAPER
 # ═══════════════════════════════════════════════════════════
 
+# ═══════════════════════════════════════════════════════════
+# [OCC] REFERENT OCCUPATION / CRIME CATEGORY ANALYSIS
+# ═══════════════════════════════════════════════════════════
+
+OCC_LABELS = {
+    "jobfair": {"FINANCE": "Finance", "HEALTHCARE": "Healthcare", "CONSTRUCTION": "Construction"},
+    "lbox": {"Obstruction of Justice": "Obstruction", "Fraud": "Fraud", "Abuse": "Abuse"},
+    "mind": {"Suicide": "Suicide", "Stress": "Stress", "Depressed": "Depression"},
+}
+
+# Use NEGATIVE_DOMAINS (defined at top) for sign flip
+FLIP_DOMAINS = NEGATIVE_DOMAINS
+
+def section_occ(tables, out_dir):
+    """Analyze bias patterns separately by referent_occ (job sector / crime type)."""
+    print("\n" + "="*70)
+    print("[OCC] REFERENT OCCUPATION / CRIME CATEGORY ANALYSIS")
+    print("="*70)
+
+    plt = setup_plt()
+    results = {}
+
+    for domain, table in tables.items():
+        models = sorted(set(r["model"] for r in table))
+        occs = sorted(set(r["referent_occ"] for r in table if r.get("referent_occ")))
+        if not occs:
+            print(f"\n  --- {domain}: no referent_occ data ---")
+            continue
+
+        labels = OCC_LABELS.get(domain, {})
+        print(f"\n  --- {domain} ({len(occs)} categories: {occs}) ---")
+
+        domain_results = {}
+
+        for model in models:
+            model_rows = [r for r in table if r["model"] == model]
+            neutral_all = [r["score"] for r in model_rows if r["condition"] == "neutral"]
+            bl_all = np.mean(neutral_all) if neutral_all else None
+
+            occ_stats = {}
+            for occ in occs:
+                occ_rows = [r for r in model_rows if r["referent_occ"] == occ]
+                neutral_occ = [r["score"] for r in occ_rows if r["condition"] == "neutral"]
+                inter_occ = [r for r in occ_rows if r["condition"] == "intersectional"]
+
+                bl_occ = np.mean(neutral_occ) if neutral_occ else bl_all
+                if bl_occ is None:
+                    continue
+
+                # Per-identity deviation within this occ
+                by_demo = defaultdict(list)
+                for r in inter_occ:
+                    demo = f"{r['gender']}+{r['attribute']}" if r["gender"] and r["attribute"] else None
+                    if demo:
+                        by_demo[demo].append(r["score"])
+
+                devs = {k: np.mean(v) - bl_occ for k, v in by_demo.items() if len(v) >= 3}
+                if not devs:
+                    continue
+
+                # LBOX direction correction
+                if domain in FLIP_DOMAINS:
+                    devs = {k: -v for k, v in devs.items()}
+
+                max_id = max(devs, key=devs.get)
+                min_id = min(devs, key=devs.get)
+                disparity = devs[max_id] - devs[min_id]
+
+                # Sig count (vs occ-specific baseline)
+                sig_count = 0
+                for demo_key, scores in by_demo.items():
+                    if len(scores) >= 5:
+                        _, p = sp.ttest_1samp(scores, bl_occ)
+                        if p < 0.05:
+                            sig_count += 1
+
+                occ_label = labels.get(occ, occ)
+                occ_stats[occ] = {
+                    "baseline": round(bl_occ, 3),
+                    "n_identities": len(devs),
+                    "disparity": round(disparity, 4),
+                    "most_favored": max_id,
+                    "most_penalized": min_id,
+                    "sig_count": sig_count,
+                    "favored_dev": round(devs[max_id], 4),
+                    "penalized_dev": round(devs[min_id], 4),
+                }
+
+            if occ_stats:
+                print(f"\n    [{model}]")
+                for occ, stats in occ_stats.items():
+                    occ_label = labels.get(occ, occ)
+                    dir_note = " (corrected: +favorable)" if domain in FLIP_DOMAINS else ""
+                    print(f"      {occ_label:20s} bl={stats['baseline']:.3f} disp={stats['disparity']:.3f} "
+                          f"sig={stats['sig_count']}/{stats['n_identities']} "
+                          f"best={stats['most_favored']}({stats['favored_dev']:+.3f}) "
+                          f"worst={stats['most_penalized']}({stats['penalized_dev']:+.3f}){dir_note}")
+
+                domain_results[model] = occ_stats
+
+        # Cross-occ comparison: does bias pattern differ by occ?
+        # For each model, compute Spearman between occ-level deviation vectors
+        print(f"\n    Cross-category bias consistency:")
+        for model in models:
+            if model not in domain_results:
+                continue
+            occ_list = sorted(domain_results[model].keys())
+            if len(occ_list) < 2:
+                continue
+
+            # Get per-identity deviation for each occ
+            occ_dev_vectors = {}
+            for occ in occ_list:
+                occ_rows = [r for r in table if r["model"] == model and r["referent_occ"] == occ]
+                neutral_occ = [r["score"] for r in occ_rows if r["condition"] == "neutral"]
+                bl_occ = np.mean(neutral_occ) if neutral_occ else 0
+
+                by_demo = defaultdict(list)
+                for r in occ_rows:
+                    if r["condition"] == "intersectional" and r["gender"] and r["attribute"]:
+                        by_demo[f"{r['gender']}+{r['attribute']}"].append(r["score"])
+
+                occ_dev_vectors[occ] = {k: np.mean(v) - bl_occ for k, v in by_demo.items() if len(v) >= 3}
+
+            # Pairwise Spearman
+            for i, occ_a in enumerate(occ_list):
+                for occ_b in occ_list[i+1:]:
+                    common = sorted(set(occ_dev_vectors[occ_a].keys()) & set(occ_dev_vectors[occ_b].keys()))
+                    if len(common) < 10:
+                        continue
+                    x = [occ_dev_vectors[occ_a][k] for k in common]
+                    y = [occ_dev_vectors[occ_b][k] for k in common]
+                    rho, p = sp.spearmanr(x, y)
+                    label_a = labels.get(occ_a, occ_a)
+                    label_b = labels.get(occ_b, occ_b)
+                    sig = "*" if p < 0.05 else ""
+                    print(f"      [{model}] {label_a} ↔ {label_b}: ρ={rho:.3f} (p={p:.4f}){sig} n={len(common)}")
+
+        results[domain] = domain_results
+
+    # Plot: heatmap of disparity by model × occ
+    for domain, domain_results in results.items():
+        if not domain_results:
+            continue
+        labels_d = OCC_LABELS.get(domain, {})
+        models_list = sorted(domain_results.keys())
+        occs = sorted(set(o for m in domain_results.values() for o in m.keys()))
+        occ_labels = [labels_d.get(o, o) for o in occs]
+
+        if len(models_list) >= 2 and len(occs) >= 2:
+            fig, ax = plt.subplots(figsize=(12, max(4, len(models_list) * 0.8)))
+            matrix = np.zeros((len(models_list), len(occs)))
+            for mi, model in enumerate(models_list):
+                for oi, occ in enumerate(occs):
+                    stats = domain_results.get(model, {}).get(occ, {})
+                    matrix[mi, oi] = stats.get("disparity", 0)
+
+            im = ax.imshow(matrix, cmap="Reds", aspect="auto")
+            ax.set_xticks(range(len(occs)))
+            ax.set_xticklabels(occ_labels, rotation=45, ha="right")
+            ax.set_yticks(range(len(models_list)))
+            ax.set_yticklabels(models_list, fontsize=9)
+            ax.set_title(f"{domain.upper()}: Bias Disparity by Category × Model")
+            plt.colorbar(im, ax=ax, shrink=0.6, label="Disparity")
+
+            # Add text annotations
+            for mi in range(len(models_list)):
+                for oi in range(len(occs)):
+                    ax.text(oi, mi, f"{matrix[mi, oi]:.3f}", ha="center", va="center", fontsize=8)
+
+            plt.tight_layout()
+            path = out_dir / f"occ_disparity_{domain}.png"
+            fig.savefig(path)
+            plt.close(fig)
+            print(f"\n    Saved: {path}")
+
+    return results
+
+
 def section_g(tables, fep_results, cross_results, norm_results, out_dir):
     print("\n" + "="*70)
     print("[G] SUMMARY TABLE FOR PAPER")
@@ -776,7 +976,7 @@ def section_g(tables, fep_results, cross_results, norm_results, out_dir):
                 _, p = sp.ttest_1samp(scores, bl_mean)
                 d = cohens_d(scores, neutral)
                 # LBOX: higher score = more severe = WORSE → flip d sign
-                if domain == "lbox":
+                if domain in FLIP_DOMAINS:
                     d = -d
                 p_values.append(float(p))
                 d_values.append(d)
@@ -802,24 +1002,34 @@ def section_g(tables, fep_results, cross_results, norm_results, out_dir):
             row[f"{domain}_max_d_id"] = max_d_id
 
         # FEP
-        for domain in ["jobfair", "lbox"]:
+        for domain in ["jobfair", "lbox", "mind"]:
             key = f"{domain}_{model}"
             if key in fep_results:
                 row[f"{domain}_fep"] = f"{fep_results[key]['mean_fep']:+.3f}"
             else:
                 row[f"{domain}_fep"] = "—"
 
-        # Cross-context
-        if model in (cross_results or {}):
-            cr = cross_results[model]
+        # Cross-context (show all pairs for this model)
+        cross_pairs = []
+        for key, cr in (cross_results or {}).items():
+            if key.endswith(f"_{model}"):
+                cross_pairs.append((key, cr))
+        if cross_pairs:
+            # Use first pair (jobfair_lbox) as primary for the table
+            _, cr = cross_pairs[0]
             row["cross_r"] = f"{cr['pearson_r']:+.3f}"
             row["reversal_rate"] = f"{cr['n_reversals']}/{cr['n_total']}"
+            # Store all pairs
+            for i, (key, cr2) in enumerate(cross_pairs):
+                pair_label = key.replace(f"_{model}", "")
+                row[f"cross_r_{pair_label}"] = f"{cr2['pearson_r']:+.3f}"
+                row[f"rev_{pair_label}"] = f"{cr2['n_reversals']}/{cr2['n_total']}"
         else:
             row["cross_r"] = "—"
             row["reversal_rate"] = "—"
 
         # Most penalized
-        for domain in ["jobfair", "lbox"]:
+        for domain in ["jobfair", "lbox", "mind"]:
             key = f"{domain}_{model}"
             if key in (norm_results or {}):
                 row[f"{domain}_worst"] = norm_results[key]["most_penalized"]
@@ -875,7 +1085,7 @@ def main():
 
     # Load
     tables = {}
-    for ds in ["jobfair", "lbox"]:
+    for ds in ["jobfair", "lbox", "mind"]:
         rows = load_consolidated(ds)
         if not rows:
             continue
@@ -895,6 +1105,7 @@ def main():
     d_results = section_d(tables, out_dir)
     e_results = section_e(tables, out_dir)
     f_results = section_f(tables, out_dir)
+    occ_results = section_occ(tables, out_dir)
     g_results = section_g(tables, b_results, d_results, e_results, out_dir)
 
     # Save all
@@ -902,7 +1113,7 @@ def main():
         "A_baseline": a_results, "B_fep": {k: {kk: vv for kk, vv in v.items() if kk != "fep_list"}
                                             for k, v in b_results.items()},
         "D_cross": {k: {kk: vv for kk, vv in v.items() if kk != "reversals"} for k, v in d_results.items()},
-        "E_normalized": e_results, "F_nes": f_results,
+        "E_normalized": e_results, "F_nes": f_results, "OCC": occ_results,
     }
     with open(out_dir / "all_statistical_tests.json", "w") as f:
         json.dump(all_stats, f, indent=2, default=str)

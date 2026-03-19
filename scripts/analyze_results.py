@@ -14,6 +14,7 @@ Output:
 Usage:
   python -m scripts.analyze_results --dataset jobfair
   python -m scripts.analyze_results --dataset lbox
+  python -m scripts.analyze_results --dataset mind
   python -m scripts.analyze_results --dataset winoidentity
   python -m scripts.analyze_results --all
 """
@@ -177,7 +178,7 @@ def _parse_score(text):
 def load_identity_mapping(csv_path):
     """Load original CSV to map row index → identity info."""
     mapping = []
-    with open(csv_path, "r", encoding="utf-8") as f:
+    with open(csv_path, "r", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         for row in reader:
             demo_str = row.get("demographic_identifier", "[]")
@@ -204,7 +205,7 @@ def collect_all_results(dataset_name):
     Find and parse all result files for a dataset, merging chunks per model.
 
     Searches in:
-      1. outputs/one_batch/{openai,anthropic}/   — run_one_batch results (JobFair, LBOX)
+      1. outputs/one_batch/{openai,anthropic}/   — run_one_batch results (JobFair, LBOX, Mind)
       2. outputs/local/{dataset}/                — run_one_experiment results
       3. outputs/batch/{openai,anthropic}/        — run_batch results (legacy, WinoIdentity)
       4. outputs/behavioral/{coref,job,legal}/    — run_experiment results (legacy)
@@ -247,6 +248,7 @@ def collect_all_results(dataset_name):
         "winoidentity": "coref",
         "jobfair": "job",
         "lbox": "legal",
+        "mind": "medical",
     }
     legacy_prefix = legacy_prefix_map.get(dataset_name, dataset_name)
 
@@ -715,14 +717,14 @@ def _save_consolidated_csv(all_results, identity_map, out_dir, dataset_name):
 
 def main():
     p = argparse.ArgumentParser(description="Analyze experiment results")
-    p.add_argument("--dataset", choices=["jobfair", "lbox", "winoidentity"])
+    p.add_argument("--dataset", choices=["jobfair", "lbox", "mind", "winoidentity"])
     p.add_argument("--csv", type=str, default=None, help="Original dataset CSV for identity mapping")
     p.add_argument("--all", action="store_true", help="Analyze all datasets")
     args = p.parse_args()
 
     ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
 
-    datasets = ["jobfair", "lbox", "winoidentity"] if args.all else [args.dataset]
+    datasets = ["jobfair", "lbox", "mind", "winoidentity"] if args.all else [args.dataset]
     if not args.all and not args.dataset:
         print("Error: --dataset or --all required")
         sys.exit(1)
@@ -730,6 +732,7 @@ def main():
     default_csvs = {
         "jobfair": "data/jobfair.csv",
         "lbox": "data/lbox.csv",
+        "mind": "data/mind.csv",
         "winoidentity": "data/winoidentity.csv",
     }
 

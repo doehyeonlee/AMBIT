@@ -58,6 +58,7 @@ MODEL_REGISTRY = {
         # Qwen
         "qwen-3.5-9b":  {"id": "Qwen/Qwen3.5-9B",       "provider": "hf", "sae": None},
         "mistral-7b":   {"id": "mistralai/Mistral-7B-Instruct-v0.3", "provider": "hf", "sae": None},
+        "llama-3.1-8b": {"id": "meta-llama/Llama-3.1-8B-Instruct",  "provider": "hf",  "sae": "llamascope"},
     },
 }
 
@@ -143,7 +144,7 @@ def build_ranking_comparisons():
 def load_csv(filepath):
     """Load WinoIdentity-format CSV."""
     probes = []
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, "r", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         for row in reader:
             occs = row.get("occs_in_samples", "[]")

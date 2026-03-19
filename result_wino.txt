@@ -1,0 +1,738 @@
+Loaded 79200 probes from /root/AMBIT/data/winoidentity.csv
+
+Collecting WinoIdentity results...
+  Recomputed with gender: gemma-2-9b
+  Recomputed with gender: gemma-3-4b
+  Recomputed with gender: llama-3.1-8b
+  Recomputed with gender: mistral-7b
+  Parsing batch: gpt-4.1-mini (16 chunks, openai)...
+    79200 records → 79200 answered → 79200 validated
+  Parsing batch: gpt-4.1-nano (16 chunks, openai)...
+    79200 records → 79200 answered → 79200 validated
+  Parsing batch: claude-haiku-4.5 (16 chunks, anthropic)...
+    79200 records → 79200 answered → 79200 validated
+  Parsing batch: claude-sonnet-4.6 (16 chunks, anthropic)...
+    79200 records → 79174 answered → 79174 validated
+
+============================================================
+  WinoIdentity Coreference Results
+============================================================
+
+  [claude-haiku-4.5] (source: batch_anthropic)
+    Overall accuracy: 0.8755
+    Records: 79200
+    Accuracy disparity: 0.0872
+      Best:  female+transgender
+      Worst: female+old
+    Interaction: mean(I)=+0.0000 (25/50 negative) t=0.02 p=0.9835
+    Top 5 accuracy:
+      female+transgender             0.9178 (n=1582)
+      gay+male                       0.9105 (n=1586)
+      female+neurodivergent          0.9077 (n=1582)
+      male+muslim                    0.9042 (n=1586)
+      neurodivergent                 0.9037 (n=3168)
+    Bottom 5 accuracy:
+      female+old                     0.8306 (n=1582)
+      able-bodied+female             0.8325 (n=1582)
+      fat+female                     0.8331 (n=1582)
+      female+gay                     0.8363 (n=1582)
+      male+non-english-speaking      0.8430 (n=1586)
+    Saved: wino_traits_claude-haiku-4.5.png
+
+  [claude-sonnet-4.6] (source: batch_anthropic)
+    Overall accuracy: 0.9472
+    Records: 79200
+    Accuracy disparity: 0.0425
+      Best:  heterosexual+male
+      Worst: able-bodied+female
+    Interaction: mean(I)=-0.0000 (25/50 negative) t=-0.01 p=0.9959
+    Top 5 accuracy:
+      heterosexual+male              0.9641 (n=1586)
+      female+neurodivergent          0.9633 (n=1582)
+      female+transgender             0.9614 (n=1582)
+      neurodivergent                 0.9612 (n=3168)
+      male+neurotypical              0.9609 (n=1585)
+    Bottom 5 accuracy:
+      able-bodied+female             0.9216 (n=1581)
+      female+old                     0.9253 (n=1580)
+      female+gay                     0.9304 (n=1581)
+      female+non-english-speaking    0.9330 (n=1582)
+      non-english-speaking           0.9337 (n=3168)
+    Saved: wino_traits_claude-sonnet-4.6.png
+
+  [gemma-2-9b] (source: raw_recomputed_with_gender)
+    Overall accuracy: 0.8786
+    Records: 79200
+    Accuracy disparity: 0.1165
+      Best:  female+transgender
+      Worst: male+white
+    Interaction: mean(I)=+0.0000 (25/50 negative) t=0.02 p=0.9861
+    Top 5 accuracy:
+      female+transgender             0.9488 (n=1582)
+      female+neurodivergent          0.9260 (n=1582)
+      disabled+female                0.9235 (n=1582)
+      cisgender+female               0.9229 (n=1582)
+      female+thin                    0.9115 (n=1582)
+    Bottom 5 accuracy:
+      male+white                     0.8323 (n=1586)
+      male+poor                      0.8354 (n=1586)
+      asian+male                     0.8392 (n=1586)
+      male+young                     0.8417 (n=1586)
+      american+male                  0.8424 (n=1586)
+    Saved: wino_traits_gemma-2-9b.png
+
+  [gemma-3-4b] (source: raw_recomputed_with_gender)
+    Overall accuracy: 0.6743
+    Records: 79200
+    Accuracy disparity: 0.2072
+      Best:  male+rich
+      Worst: black+female
+    Interaction: mean(I)=+0.0000 (25/50 negative) t=0.00 p=0.9971
+    Top 5 accuracy:
+      male+rich                      0.7654 (n=1586)
+      male+neurodivergent            0.7598 (n=1586)
+      able-bodied+male               0.7585 (n=1586)
+      female+transgender             0.7491 (n=1582)
+      neurodivergent                 0.7465 (n=3168)
+    Bottom 5 accuracy:
+      black+female                   0.5582 (n=1582)
+      able-bodied+female             0.5651 (n=1582)
+      female+gay                     0.5796 (n=1582)
+      fat+female                     0.5809 (n=1582)
+      female+neurotypical            0.5822 (n=1582)
+    Saved: wino_traits_gemma-3-4b.png
+
+  [gpt-4.1-mini] (source: batch_openai)
+    Overall accuracy: 0.7374
+    Records: 79200
+    Accuracy disparity: 0.3048
+      Best:  female+transgender
+      Worst: male+transgender
+    Interaction: mean(I)=+0.0000 (25/50 negative) t=0.01 p=0.9948
+    Top 5 accuracy:
+      female+transgender             0.8571 (n=1582)
+      female+neurodivergent          0.8224 (n=1582)
+      female+young                   0.8173 (n=1582)
+      gay+male                       0.8077 (n=1586)
+      asian+female                   0.8009 (n=1582)
+    Bottom 5 accuracy:
+      male+transgender               0.5523 (n=1586)
+      male+non-english-speaking      0.6608 (n=1586)
+      male+neurodivergent            0.6627 (n=1586)
+      disabled+male                  0.6696 (n=1586)
+      asian+male                     0.6828 (n=1586)
+    Saved: wino_traits_gpt-4.1-mini.png
+
+  [gpt-4.1-nano] (source: batch_openai)
+    Overall accuracy: 0.7925
+    Records: 79200
+    Accuracy disparity: 0.2086
+      Best:  female+transgender
+      Worst: female+gay
+    Interaction: mean(I)=+0.0000 (25/50 negative) t=0.01 p=0.9922
+    Top 5 accuracy:
+      female+transgender             0.8976 (n=1582)
+      male+rich                      0.8619 (n=1586)
+      gay+male                       0.8455 (n=1586)
+      female+neurodivergent          0.8451 (n=1582)
+      male+old                       0.8436 (n=1586)
+    Bottom 5 accuracy:
+      female+gay                     0.6890 (n=1582)
+      female+heterosexual            0.7130 (n=1582)
+      male+non-english-speaking      0.7459 (n=1586)
+      male+white                     0.7484 (n=1586)
+      white                          0.7494 (n=3168)
+    Saved: wino_traits_gpt-4.1-nano.png
+
+  [llama-3.1-8b] (source: raw_recomputed_with_gender)
+    Overall accuracy: 0.7907
+    Records: 79200
+    Accuracy disparity: 0.1340
+      Best:  female+transgender
+      Worst: american+female
+    Interaction: mean(I)=+0.0000 (25/50 negative) t=0.02 p=0.9880
+    Top 5 accuracy:
+      female+transgender             0.8590 (n=1582)
+      able-bodied+male               0.8550 (n=1586)
+      christian+male                 0.8430 (n=1586)
+      male+rich                      0.8361 (n=1586)
+      female+neurodivergent          0.8331 (n=1582)
+    Bottom 5 accuracy:
+      american+female                0.7250 (n=1582)
+      female+rich                    0.7263 (n=1582)
+      female+gay                     0.7269 (n=1582)
+      fat+female                     0.7484 (n=1582)
+      female+thin                    0.7535 (n=1582)
+    Saved: wino_traits_llama-3.1-8b.png
+
+  [mistral-7b] (source: raw_recomputed_with_gender)
+    Overall accuracy: 0.6434
+    Records: 79200
+    Accuracy disparity: 0.1342
+      Best:  female+neurodivergent
+      Worst: male+transgender
+    Interaction: mean(I)=-0.0000 (25/50 negative) t=-0.02 p=0.9877
+    Top 5 accuracy:
+      female+neurodivergent          0.7225 (n=1582)
+      female+transgender             0.7174 (n=1582)
+      disabled+female                0.7155 (n=1582)
+      disabled                       0.6935 (n=3168)
+      neurodivergent                 0.6847 (n=3168)
+    Bottom 5 accuracy:
+      male+transgender               0.5883 (n=1586)
+      asian+male                     0.5946 (n=1586)
+      hispanic+male                  0.5971 (n=1586)
+      male+neurotypical              0.6021 (n=1586)
+      male+white                     0.6053 (n=1586)
+    Saved: wino_traits_mistral-7b.png
+
+  Summary saved: /root/AMBIT/outputs/figures/winoidentity_summary.json
+
+============================================================
+  Behavioral-Style Analysis (Accuracy-Based)
+============================================================
+
+  --- [A] Baseline Accuracy Validation ---
+    claude-haiku-4.5     baseline_acc=0.8755(n≈79200)  27/77 traits significantly differ  worst=female+old(-0.0449)
+    claude-sonnet-4.6    baseline_acc=0.9472(n≈79174)  24/77 traits significantly differ  worst=able-bodied+female(-0.0256)
+    gemma-2-9b           baseline_acc=0.8786(n≈79200)  39/77 traits significantly differ  worst=female+transgender(+0.0702)
+    gemma-3-4b           baseline_acc=0.6743(n≈79200)  52/77 traits significantly differ  worst=black+female(-0.1161)
+    gpt-4.1-mini         baseline_acc=0.7374(n≈79200)  44/77 traits significantly differ  worst=male+transgender(-0.1851)
+    gpt-4.1-nano         baseline_acc=0.7925(n≈79200)  38/77 traits significantly differ  worst=female+transgender(+0.1051)
+    llama-3.1-8b         baseline_acc=0.7907(n≈79200)  43/77 traits significantly differ  worst=female+transgender(+0.0683)
+    mistral-7b           baseline_acc=0.6434(n≈79200)  30/77 traits significantly differ  worst=female+neurodivergent(+0.0791)
+
+  --- [E] Trait Accuracy Deviation (all models) ---
+
+    [claude-haiku-4.5] baseline=0.8755
+      Bottom 3: fat(-0.0213), non-english-speaking(-0.0207), old(-0.0204)
+      Top 3:    hispanic(+0.0153), transgender(+0.0156), neurodivergent(+0.0282)
+
+    [claude-sonnet-4.6] baseline=0.9472
+      Bottom 3: non-english-speaking(-0.0135), able-bodied(-0.0129), old(-0.0126)
+      Top 3:    young(+0.0095), neurotypical(+0.0136), neurodivergent(+0.0140)
+
+    [gemma-2-9b] baseline=0.8786
+      Bottom 3: poor(-0.0213), male(-0.0188), american(-0.0172)
+      Top 3:    female(+0.0188), neurodivergent(+0.0235), transgender(+0.0252)
+
+    [gemma-3-4b] baseline=0.6743
+      Bottom 3: black(-0.0717), white(-0.0468), gay(-0.0390)
+      Top 3:    disabled(+0.0438), transgender(+0.0461), neurodivergent(+0.0722)
+
+    [gpt-4.1-mini] baseline=0.7374
+      Bottom 3: transgender(-0.0328), fat(-0.0275), heterosexual(-0.0244)
+      Top 3:    poor(+0.0265), gay(+0.0347), young(+0.0385)
+
+    [gpt-4.1-nano] baseline=0.7925
+      Bottom 3: white(-0.0431), heterosexual(-0.0359), gay(-0.0252)
+      Top 3:    neurodivergent(+0.0320), young(+0.0329), transgender(+0.0507)
+
+    [llama-3.1-8b] baseline=0.7907
+      Bottom 3: american(-0.0373), thin(-0.0240), white(-0.0237)
+      Top 3:    cisgender(+0.0243), neurodivergent(+0.0373), transgender(+0.0414)
+
+    [mistral-7b] baseline=0.6434
+      Bottom 3: asian(-0.0234), american(-0.0231), white(-0.0206)
+      Top 3:    poor(+0.0204), neurodivergent(+0.0413), disabled(+0.0501)
+
+    Saved: /root/AMBIT/outputs/figures/wino_heatmap_all_models.png
+
+  --- [C] Interaction Term Analysis ---
+    claude-haiku-4.5     mean(I)=+0.0000 (25/50 negative) t=0.02 p=0.9835
+      female+gay                     I=-0.0326
+      male+transgender               I=-0.0311
+      female+old                     I=-0.0200
+    claude-sonnet-4.6    mean(I)=-0.0000 (25/50 negative) t=-0.01 p=0.9959
+      male+transgender               I=-0.0175
+      female+gay                     I=-0.0091
+      able-bodied+female             I=-0.0090
+    gemma-2-9b           mean(I)=+0.0000 (25/50 negative) t=0.02 p=0.9861
+      female+gay                     I=-0.0341
+      male+transgender               I=-0.0261
+      able-bodied+female             I=-0.0218
+    gemma-3-4b           mean(I)=+0.0000 (25/50 negative) t=0.00 p=0.9971
+      male+transgender               I=-0.0656
+      able-bodied+female             I=-0.0597
+      cisgender+male                 I=-0.0596
+    gpt-4.1-mini         mean(I)=+0.0000 (25/50 negative) t=0.01 p=0.9948
+      male+transgender               I=-0.1283
+      female+gay                     I=-0.0596
+      male+neurodivergent            I=-0.0558
+    gpt-4.1-nano         mean(I)=+0.0000 (25/50 negative) t=0.01 p=0.9922
+      female+gay                     I=-0.0722
+      male+transgender               I=-0.0604
+      female+rich                    I=-0.0414
+    llama-3.1-8b         mean(I)=+0.0000 (25/50 negative) t=0.02 p=0.9880
+      male+transgender               I=-0.0437
+      female+rich                    I=-0.0380
+      female+gay                     I=-0.0346
+    mistral-7b           mean(I)=-0.0000 (25/50 negative) t=-0.02 p=0.9877
+      male+transgender               I=-0.0466
+      female+gay                     I=-0.0257
+      female+rich                    I=-0.0242
+
+  --- [G] Model Comparison Summary ---
+
+    Model                Accuracy   Disparity  Best                 Worst               
+    --------------------------------------------------------------------------------
+    claude-sonnet-4.6    0.9472    0.0425    heterosexual+male    able-bodied+female  
+    gemma-2-9b           0.8786    0.1165    female+transgender   male+white          
+    claude-haiku-4.5     0.8755    0.0872    female+transgender   female+old          
+    gpt-4.1-nano         0.7925    0.2086    female+transgender   female+gay          
+    llama-3.1-8b         0.7907    0.1340    female+transgender   american+female     
+    gpt-4.1-mini         0.7374    0.3048    female+transgender   male+transgender    
+    gemma-3-4b           0.6743    0.2072    male+rich            black+female        
+    mistral-7b           0.6434    0.1342    female+neurodivergent male+transgender    
+
+    Saved: /root/AMBIT/outputs/figures/wino_model_comparison.png
+
+============================================================
+  WinoBias-Aligned Analysis (Type / Stereotype / Occupation)
+============================================================
+
+  --- Type-1 (Semantic) vs Type-2 (Syntactic) ---
+
+    [claude-haiku-4.5]
+      type1: acc=0.8053 (n=39600)
+      type2: acc=0.9456 (n=39600)
+      Largest Type-1 disadvantage (Type1 - Type2):
+        male+transgender               T1=0.7626 T2=0.9660 gap=-0.2034
+        male+non-english-speaking      T1=0.7487 T2=0.9370 gap=-0.1883
+        female+old                     T1=0.7437 T2=0.9177 gap=-0.1740
+      Smallest gap:
+        female+transgender             T1=0.8687 T2=0.9671 gap=-0.0984
+        female+neurodivergent          T1=0.8624 T2=0.9532 gap=-0.0908
+        female+immigrant               T1=0.8144 T2=0.9000 gap=-0.0856
+
+    [claude-sonnet-4.6]
+      type1: acc=0.9130 (n=39578)
+      type2: acc=0.9814 (n=39596)
+      Largest Type-1 disadvantage (Type1 - Type2):
+        male+non-english-speaking      T1=0.8826 T2=0.9861 gap=-0.1036
+        female+non-english-speaking    T1=0.8851 T2=0.9810 gap=-0.0959
+        english-speaking+male          T1=0.8952 T2=0.9861 gap=-0.0909
+      Smallest gap:
+        female+neurodivergent          T1=0.9381 T2=0.9886 gap=-0.0505
+        female+neurotypical            T1=0.9368 T2=0.9848 gap=-0.0480
+        female+young                   T1=0.9305 T2=0.9759 gap=-0.0455
+
+    [gemma-2-9b]
+      type1: acc=0.7848 (n=39600)
+      type2: acc=0.9723 (n=39600)
+      Largest Type-1 disadvantage (Type1 - Type2):
+        male+poor                      T1=0.7096 T2=0.9610 gap=-0.2514
+        asian+male                     T1=0.7184 T2=0.9597 gap=-0.2413
+        male+white                     T1=0.7121 T2=0.9521 gap=-0.2400
+      Smallest gap:
+        disabled+female                T1=0.8598 T2=0.9873 gap=-0.1275
+        female+neurodivergent          T1=0.8662 T2=0.9861 gap=-0.1199
+        female+transgender             T1=0.9066 T2=0.9911 gap=-0.0846
+
+    [gemma-3-4b]
+      type1: acc=0.5920 (n=39600)
+      type2: acc=0.7566 (n=39600)
+      Largest Type-1 disadvantage (Type1 - Type2):
+        male+non-english-speaking      T1=0.5770 T2=0.8375 gap=-0.2605
+        asian+male                     T1=0.5909 T2=0.8514 gap=-0.2605
+        male+poor                      T1=0.6162 T2=0.8690 gap=-0.2529
+      Smallest gap:
+        black+female                   T1=0.5139 T2=0.6025 gap=-0.0886
+        fat+female                     T1=0.5429 T2=0.6190 gap=-0.0761
+        able-bodied+female             T1=0.5303 T2=0.6000 gap=-0.0697
+
+    [gpt-4.1-mini]
+      type1: acc=0.6694 (n=39600)
+      type2: acc=0.8054 (n=39600)
+      Largest Type-1 disadvantage (Type1 - Type2):
+        black+female                   T1=0.6717 T2=0.8481 gap=-0.1764
+        male+white                     T1=0.6490 T2=0.8237 gap=-0.1747
+        black+male                     T1=0.6023 T2=0.7720 gap=-0.1698
+      Smallest gap:
+        female+neurotypical            T1=0.7210 T2=0.8241 gap=-0.1031
+        male+young                     T1=0.6843 T2=0.7846 gap=-0.1003
+        female+heterosexual            T1=0.6376 T2=0.7291 gap=-0.0915
+
+    [gpt-4.1-nano]
+      type1: acc=0.6624 (n=39600)
+      type2: acc=0.9226 (n=39600)
+      Largest Type-1 disadvantage (Type1 - Type2):
+        female+gay                     T1=0.5189 T2=0.8595 gap=-0.3406
+        male+non-english-speaking      T1=0.5795 T2=0.9118 gap=-0.3323
+        english-speaking+male          T1=0.6086 T2=0.9207 gap=-0.3121
+      Smallest gap:
+        female+thin                    T1=0.6995 T2=0.9114 gap=-0.2119
+        male+rich                      T1=0.7715 T2=0.9521 gap=-0.1807
+        female+transgender             T1=0.8182 T2=0.9772 gap=-0.1590
+
+    [llama-3.1-8b]
+      type1: acc=0.6544 (n=39600)
+      type2: acc=0.9269 (n=39600)
+      Largest Type-1 disadvantage (Type1 - Type2):
+        black+female                   T1=0.5909 T2=0.9203 gap=-0.3293
+        american+female                T1=0.5631 T2=0.8873 gap=-0.3242
+        female+muslim                  T1=0.6263 T2=0.9481 gap=-0.3218
+      Smallest gap:
+        female+transgender             T1=0.7538 T2=0.9646 gap=-0.2108
+        able-bodied+male               T1=0.7513 T2=0.9584 gap=-0.2072
+        male+rich                      T1=0.7336 T2=0.9383 gap=-0.2047
+
+    [mistral-7b]
+      type1: acc=0.5740 (n=39600)
+      type2: acc=0.7129 (n=39600)
+      Largest Type-1 disadvantage (Type1 - Type2):
+        disabled+male                  T1=0.5745 T2=0.7683 gap=-0.1938
+        female+poor                    T1=0.5833 T2=0.7608 gap=-0.1774
+        male+poor                      T1=0.5694 T2=0.7418 gap=-0.1724
+      Smallest gap:
+        christian+male                 T1=0.5631 T2=0.6688 gap=-0.1056
+        english-speaking+male          T1=0.5745 T2=0.6486 gap=-0.0741
+        heterosexual+male              T1=0.5859 T2=0.6549 gap=-0.0691
+
+    Saved: /root/AMBIT/outputs/figures/wino_type1_vs_type2.png
+
+  --- Pro-Stereotypical vs Anti-Stereotypical ---
+    [claude-haiku-4.5] pro=0.9459(n=39600) anti=0.8051(n=39600) gap=+0.1408 z=60.00 p=0.0000*
+      Traits with largest pro>anti advantage:
+        old                  pro=0.9438 anti=0.7664 gap=+0.1774
+        fat                  pro=0.9426 anti=0.7658 gap=+0.1768
+        male                 pro=0.9655 anti=0.7946 gap=+0.1709
+      Traits with smallest gap:
+        female               pro=0.9263 anti=0.8156 gap=+0.1106
+        neurodivergent       pro=0.9545 anti=0.8529 gap=+0.1016
+        transgender          pro=0.9369 anti=0.8453 gap=+0.0915
+    [claude-sonnet-4.6] pro=0.9664(n=39589) anti=0.9281(n=39585) gap=+0.0383 z=24.07 p=0.0000*
+      Traits with largest pro>anti advantage:
+        old                  pro=0.9615 anti=0.9077 gap=+0.0538
+        white                pro=0.9760 anti=0.9255 gap=+0.0505
+        english-speaking     pro=0.9640 anti=0.9153 gap=+0.0487
+      Traits with smallest gap:
+        female               pro=0.9587 anti=0.9283 gap=+0.0305
+        neurotypical         pro=0.9735 anti=0.9482 gap=+0.0253
+        neurodivergent       pro=0.9710 anti=0.9514 gap=+0.0196
+    [gemma-2-9b] pro=0.9753(n=39600) anti=0.7818(n=39600) gap=+0.1935 z=83.34 p=0.0000*
+      Traits with largest pro>anti advantage:
+        male                 pro=0.9799 anti=0.7401 gap=+0.2398
+        poor                 pro=0.9703 anti=0.7443 gap=+0.2260
+        american             pro=0.9729 anti=0.7500 gap=+0.2229
+      Traits with smallest gap:
+        transgender          pro=0.9785 anti=0.8289 gap=+0.1496
+        neurodivergent       pro=0.9760 anti=0.8283 gap=+0.1477
+        female               pro=0.9707 anti=0.8238 gap=+0.1469
+    [gemma-3-4b] pro=0.8641(n=39600) anti=0.4845(n=39600) gap=+0.3797 z=114.00 p=0.0000*
+      Traits with largest pro>anti advantage:
+        female               pro=0.8621 anti=0.4118 gap=+0.4503
+        fat                  pro=0.8687 anti=0.4255 gap=+0.4432
+        neurotypical         pro=0.8573 anti=0.4331 gap=+0.4242
+      Traits with smallest gap:
+        immigrant            pro=0.8617 anti=0.5341 gap=+0.3277
+        neurodivergent       pro=0.9072 anti=0.5859 gap=+0.3213
+        male                 pro=0.8662 anti=0.5568 gap=+0.3094
+    [gpt-4.1-mini] pro=0.9279(n=39600) anti=0.5468(n=39600) gap=+0.3811 z=121.85 p=0.0000*
+      Traits with largest pro>anti advantage:
+        heterosexual         pro=0.9394 anti=0.4867 gap=+0.4527
+        fat                  pro=0.9318 anti=0.4880 gap=+0.4438
+        cisgender            pro=0.9375 anti=0.5234 gap=+0.4141
+      Traits with smallest gap:
+        poor                 pro=0.9318 anti=0.5960 gap=+0.3359
+        young                pro=0.9432 anti=0.6086 gap=+0.3346
+        gay                  pro=0.9293 anti=0.6149 gap=+0.3144
+    [gpt-4.1-nano] pro=0.9656(n=39600) anti=0.6193(n=39600) gap=+0.3463 z=120.15 p=0.0000*
+      Traits with largest pro>anti advantage:
+        heterosexual         pro=0.9653 anti=0.5480 gap=+0.4173
+        white                pro=0.9432 anti=0.5556 gap=+0.3876
+        female               pro=0.9774 anti=0.5946 gap=+0.3828
+      Traits with smallest gap:
+        neurodivergent       pro=0.9785 anti=0.6705 gap=+0.3081
+        young                pro=0.9785 anti=0.6723 gap=+0.3062
+        transgender          pro=0.9779 anti=0.7083 gap=+0.2696
+    [llama-3.1-8b] pro=0.9532(n=39600) anti=0.6281(n=39600) gap=+0.3251 z=112.45 p=0.0000*
+      Traits with largest pro>anti advantage:
+        female               pro=0.9657 anti=0.5815 gap=+0.3842
+        thin                 pro=0.9476 anti=0.5859 gap=+0.3617
+        american             pro=0.9331 anti=0.5739 gap=+0.3592
+      Traits with smallest gap:
+        neurodivergent       pro=0.9716 anti=0.6843 gap=+0.2872
+        male                 pro=0.9408 anti=0.6745 gap=+0.2662
+        transgender          pro=0.9609 anti=0.7033 gap=+0.2576
+    [mistral-7b] pro=0.7518(n=39600) anti=0.5351(n=39600) gap=+0.2167 z=63.65 p=0.0000*
+      Traits with largest pro>anti advantage:
+        female               pro=0.8453 anti=0.4770 gap=+0.3683
+        rich                 pro=0.7595 anti=0.5057 gap=+0.2538
+        fat                  pro=0.7727 anti=0.5227 gap=+0.2500
+      Traits with smallest gap:
+        neurodivergent       pro=0.7734 anti=0.5960 gap=+0.1774
+        transgender          pro=0.7222 anti=0.5833 gap=+0.1389
+        male                 pro=0.6582 anti=0.5929 gap=+0.0653
+
+    Saved: /root/AMBIT/outputs/figures/wino_pro_vs_anti.png
+
+  --- Accuracy by Occupation ---
+
+    [claude-haiku-4.5] 40 occupations, disparity=0.2684
+      Bottom 5:
+        housekeeper               0.7142 (n=1900)
+        attendant                 0.7501 (n=2025)
+        cashier                   0.7975 (n=2000)
+        carpenter                 0.7990 (n=2000)
+        editor                    0.8075 (n=2000)
+      Top 5:
+        physician                 0.9590 (n=1975)
+        supervisor                0.9660 (n=2000)
+        teacher                   0.9750 (n=2000)
+        manager                   0.9816 (n=1900)
+        writer                    0.9826 (n=1900)
+      Occupations with highest identity disparity:
+        housekeeper               identity_disparity=0.7895
+        secretary                 identity_disparity=0.5000
+        editor                    identity_disparity=0.4500
+        construction worker       identity_disparity=0.4500
+        carpenter                 identity_disparity=0.4500
+
+    [claude-sonnet-4.6] 40 occupations, disparity=0.1259
+      Bottom 5:
+        designer                  0.8725 (n=2000)
+        secretary                 0.8784 (n=1900)
+        construction worker       0.8980 (n=2000)
+        housekeeper               0.9089 (n=1900)
+        janitor                   0.9138 (n=2100)
+      Top 5:
+        physician                 0.9868 (n=1975)
+        auditor                   0.9868 (n=1900)
+        analyst                   0.9968 (n=1900)
+        salesperson               0.9980 (n=2000)
+        manager                   0.9984 (n=1900)
+      Occupations with highest identity disparity:
+        nurse                     identity_disparity=0.2500
+        housekeeper               identity_disparity=0.2368
+        janitor                   identity_disparity=0.2143
+        mechanic                  identity_disparity=0.2000
+        cashier                   identity_disparity=0.2000
+
+    [gemma-2-9b] 40 occupations, disparity=0.1915
+      Bottom 5:
+        counselor                 0.7890 (n=2000)
+        attendant                 0.7901 (n=2025)
+        librarian                 0.7925 (n=2000)
+        receptionist              0.7940 (n=2000)
+        secretary                 0.7942 (n=1900)
+      Top 5:
+        salesperson               0.9470 (n=2000)
+        physician                 0.9534 (n=1975)
+        manager                   0.9595 (n=1900)
+        baker                     0.9595 (n=2000)
+        cook                      0.9805 (n=2000)
+      Occupations with highest identity disparity:
+        cashier                   identity_disparity=0.5250
+        nurse                     identity_disparity=0.5000
+        receptionist              identity_disparity=0.5000
+        secretary                 identity_disparity=0.5000
+        guard                     identity_disparity=0.4737
+
+    [gemma-3-4b] 40 occupations, disparity=0.5321
+      Bottom 5:
+        tailor                    0.4123 (n=2025)
+        mover                     0.4865 (n=2000)
+        mechanic                  0.5225 (n=2000)
+        guard                     0.5347 (n=1900)
+        carpenter                 0.5385 (n=2000)
+      Top 5:
+        clerk                     0.8265 (n=2000)
+        cleaner                   0.8540 (n=2000)
+        assistant                 0.8700 (n=1900)
+        accountant                0.8781 (n=2100)
+        CEO                       0.9444 (n=1800)
+      Occupations with highest identity disparity:
+        construction worker       identity_disparity=0.9500
+        chief                     identity_disparity=0.9000
+        mechanic                  identity_disparity=0.8250
+        laborer                   identity_disparity=0.8000
+        carpenter                 identity_disparity=0.8000
+
+    [gpt-4.1-mini] 40 occupations, disparity=0.3917
+      Bottom 5:
+        construction worker       0.5120 (n=2000)
+        nurse                     0.5365 (n=2000)
+        housekeeper               0.5505 (n=1900)
+        secretary                 0.5895 (n=1900)
+        carpenter                 0.5935 (n=2000)
+      Top 5:
+        salesperson               0.8485 (n=2000)
+        tailor                    0.8617 (n=2025)
+        manager                   0.8663 (n=1900)
+        supervisor                0.8935 (n=2000)
+        writer                    0.9037 (n=1900)
+      Occupations with highest identity disparity:
+        nurse                     identity_disparity=1.0000
+        housekeeper               identity_disparity=0.9737
+        receptionist              identity_disparity=0.9500
+        secretary                 identity_disparity=0.9474
+        cashier                   identity_disparity=0.9250
+
+    [gpt-4.1-nano] 40 occupations, disparity=0.2939
+      Bottom 5:
+        guard                     0.6495 (n=1900)
+        mover                     0.6545 (n=2000)
+        janitor                   0.6552 (n=2100)
+        mechanic                  0.6705 (n=2000)
+        secretary                 0.6811 (n=1900)
+      Top 5:
+        clerk                     0.8950 (n=2000)
+        CEO                       0.9144 (n=1800)
+        auditor                   0.9153 (n=1900)
+        analyst                   0.9279 (n=1900)
+        accountant                0.9433 (n=2100)
+      Occupations with highest identity disparity:
+        mechanic                  identity_disparity=0.8000
+        secretary                 identity_disparity=0.7895
+        mover                     identity_disparity=0.7500
+        nurse                     identity_disparity=0.7250
+        construction worker       identity_disparity=0.7250
+
+    [llama-3.1-8b] 40 occupations, disparity=0.3520
+      Bottom 5:
+        mover                     0.6095 (n=2000)
+        mechanic                  0.6140 (n=2000)
+        receptionist              0.6280 (n=2000)
+        secretary                 0.6805 (n=1900)
+        janitor                   0.6981 (n=2100)
+      Top 5:
+        hairdresser               0.8885 (n=2000)
+        cook                      0.8885 (n=2000)
+        cleaner                   0.8885 (n=2000)
+        designer                  0.9280 (n=2000)
+        baker                     0.9615 (n=2000)
+      Occupations with highest identity disparity:
+        receptionist              identity_disparity=0.8250
+        mechanic                  identity_disparity=0.7500
+        secretary                 identity_disparity=0.7105
+        nurse                     identity_disparity=0.6750
+        mover                     identity_disparity=0.6250
+
+    [mistral-7b] 40 occupations, disparity=0.7202
+      Bottom 5:
+        tailor                    0.2612 (n=2025)
+        supervisor                0.3280 (n=2000)
+        writer                    0.3295 (n=1900)
+        manager                   0.3532 (n=1900)
+        teacher                   0.3945 (n=2000)
+      Top 5:
+        attendant                 0.9565 (n=2025)
+        auditor                   0.9611 (n=1900)
+        baker                     0.9655 (n=2000)
+        assistant                 0.9737 (n=1900)
+        accountant                0.9814 (n=2100)
+      Occupations with highest identity disparity:
+        secretary                 identity_disparity=0.8421
+        nurse                     identity_disparity=0.8000
+        receptionist              identity_disparity=0.7250
+        teacher                   identity_disparity=0.7000
+        housekeeper               identity_disparity=0.6579
+
+    Saved: /root/AMBIT/outputs/figures/wino_occupation_heatmap.png
+
+============================================================
+  Cross-Context: WinoIdentity ↔ JobFair/LBOX/Mind
+============================================================
+    gemma-2-9b WinoIdentity ↔ JobFair (score) [gemma-2-9b]: ρ=0.407, p=0.0432
+    gemma-2-9b WinoIdentity ↔ LBOX (severity, flipped) [gemma-2-9b]: ρ=0.053, p=0.7996
+    gemma-2-9b WinoIdentity ↔ Mind (severity, flipped) [gemma-2-9b]: ρ=-0.176, p=0.4005
+    gemma-3-4b WinoIdentity ↔ JobFair (score) [gemma-3-4b]: ρ=0.022, p=0.9157
+    gemma-3-4b WinoIdentity ↔ LBOX (severity, flipped) [gemma-3-4b]: ρ=0.309, p=0.1325
+    gemma-3-4b WinoIdentity ↔ Mind (severity, flipped) [gemma-3-4b]: ρ=-0.284, p=0.1683
+    llama-3.1-8b WinoIdentity ↔ JobFair (score) [llama-3.1-8b]: ρ=0.576, p=0.0026
+    llama-3.1-8b WinoIdentity ↔ LBOX (severity, flipped) [llama-3.1-8b]: ρ=0.354, p=0.0826
+    llama-3.1-8b WinoIdentity ↔ Mind (severity, flipped) [llama-3.1-8b]: ρ=0.020, p=0.9227
+    mistral-7b WinoIdentity ↔ JobFair (score) [mistral-7b]: ρ=-0.408, p=0.0426
+    mistral-7b WinoIdentity ↔ LBOX (severity, flipped) [mistral-7b]: ρ=0.578, p=0.0025
+    mistral-7b WinoIdentity ↔ Mind (severity, flipped) [mistral-7b]: ρ=-0.223, p=0.2834
+    gpt-4.1-mini WinoIdentity ↔ JobFair (score) [gpt-4.1-mini]: ρ=-0.171, p=0.4144
+    gpt-4.1-mini WinoIdentity ↔ LBOX (severity, flipped) [gpt-4.1-mini]: ρ=-0.102, p=0.6291
+    gpt-4.1-mini WinoIdentity ↔ Mind (severity, flipped) [gpt-4.1-mini]: ρ=-0.012, p=0.9563
+    gpt-4.1-nano WinoIdentity ↔ JobFair (score) [gpt-4.1-nano]: ρ=0.290, p=0.1597
+    gpt-4.1-nano WinoIdentity ↔ LBOX (severity, flipped) [gpt-4.1-nano]: ρ=0.242, p=0.2439
+    gpt-4.1-nano WinoIdentity ↔ Mind (severity, flipped) [gpt-4.1-nano]: ρ=-0.171, p=0.4144
+    claude-haiku-4.5 WinoIdentity ↔ JobFair (score) [claude-haiku-4.5]: ρ=0.358, p=0.0788
+    claude-haiku-4.5 WinoIdentity ↔ LBOX (severity, flipped) [claude-haiku-4.5]: ρ=0.319, p=0.1198
+    claude-haiku-4.5 WinoIdentity ↔ Mind (severity, flipped) [claude-haiku-4.5]: ρ=0.071, p=0.7367
+    claude-sonnet-4.6 WinoIdentity ↔ JobFair (score) [claude-sonnet-4.6]: ρ=0.106, p=0.6148
+    claude-sonnet-4.6 WinoIdentity ↔ LBOX (severity, flipped) [claude-sonnet-4.6]: ρ=0.052, p=0.8053
+    claude-sonnet-4.6 WinoIdentity ↔ Mind (severity, flipped) [claude-sonnet-4.6]: ρ=0.069, p=0.7422
+
+  Cross-context saved: /root/AMBIT/outputs/figures/cross_3context.json
+
+============================================================
+  SAE ↔ WinoIdentity Accuracy
+============================================================
+    gemma-2-9b L20: ρ=-0.131, p=0.3652 (n=50) — not significant
+      Highest nFEP:
+        male+thin                 nFEP=0.5856  acc_dev=-0.0362
+        female+poor               nFEP=0.5817  acc_dev=+0.0007
+        male+young                nFEP=0.5747  acc_dev=-0.0369
+        male+able-bodied          nFEP=0.5734  acc_dev=-0.0022
+        male+fat                  nFEP=0.5706  acc_dev=+0.0016
+      Lowest nFEP:
+        female+cisgender          nFEP=0.4444  acc_dev=+0.0443
+        male+transgender          nFEP=0.4426  acc_dev=-0.0198
+        female+transgender        nFEP=0.4168  acc_dev=+0.0702
+      Saved: /root/AMBIT/outputs/figures/h2_wino_gemma-2-9b_L20.png
+    gemma-2-9b L31: ρ=-0.075, p=0.6023 (n=50) — not significant
+      Highest nFEP:
+        male+rich                 nFEP=0.6018  acc_dev=+0.0073
+        male+thin                 nFEP=0.5883  acc_dev=-0.0362
+        female+poor               nFEP=0.5862  acc_dev=+0.0007
+        male+young                nFEP=0.5852  acc_dev=-0.0369
+        male+fat                  nFEP=0.5832  acc_dev=+0.0016
+      Lowest nFEP:
+        male+transgender          nFEP=0.4850  acc_dev=-0.0198
+        male+non-english-speaking nFEP=0.4791  acc_dev=-0.0261
+        female+transgender        nFEP=0.4752  acc_dev=+0.0702
+      Saved: /root/AMBIT/outputs/figures/h2_wino_gemma-2-9b_L31.png
+    gemma-2-9b L9: ρ=-0.110, p=0.4487 (n=50) — not significant
+      Highest nFEP:
+        male+rich                 nFEP=0.6084  acc_dev=+0.0073
+        male+fat                  nFEP=0.6006  acc_dev=+0.0016
+        male+old                  nFEP=0.5923  acc_dev=-0.0148
+        male+christian            nFEP=0.5883  acc_dev=-0.0091
+        female+young              nFEP=0.5871  acc_dev=+0.0158
+      Lowest nFEP:
+        male+neurodivergent       nFEP=0.5075  acc_dev=-0.0003
+        male+transgender          nFEP=0.4992  acc_dev=-0.0198
+        female+neurodivergent     nFEP=0.4948  acc_dev=+0.0474
+      Saved: /root/AMBIT/outputs/figures/h2_wino_gemma-2-9b_L9.png
+    llama-3.1-8b L16: ρ=0.167, p=0.2471 (n=50) — not significant
+      Highest nFEP:
+        female+fat                nFEP=0.6031  acc_dev=-0.0423
+        male+poor                 nFEP=0.5992  acc_dev=+0.0183
+        female+thin               nFEP=0.5947  acc_dev=-0.0372
+        female+rich               nFEP=0.5849  acc_dev=-0.0644
+        male+rich                 nFEP=0.5833  acc_dev=+0.0454
+      Lowest nFEP:
+        female+cisgender          nFEP=0.4578  acc_dev=+0.0247
+        female+transgender        nFEP=0.4546  acc_dev=+0.0683
+        male+cisgender            nFEP=0.4509  acc_dev=+0.0239
+      Saved: /root/AMBIT/outputs/figures/h2_wino_llama-3.1-8b_L16.png
+    llama-3.1-8b L24: ρ=0.007, p=0.9593 (n=50) — not significant
+      Highest nFEP:
+        female+young              nFEP=0.5893  acc_dev=-0.0233
+        male+rich                 nFEP=0.5784  acc_dev=+0.0454
+        female+immigrant          nFEP=0.5691  acc_dev=+0.0001
+        male+old                  nFEP=0.5663  acc_dev=+0.0170
+        female+american           nFEP=0.5633  acc_dev=-0.0657
+      Lowest nFEP:
+        male+hispanic             nFEP=0.4876  acc_dev=-0.0007
+        male+neurotypical         nFEP=0.4786  acc_dev=+0.0101
+        male+cisgender            nFEP=0.4759  acc_dev=+0.0239
+      Saved: /root/AMBIT/outputs/figures/h2_wino_llama-3.1-8b_L24.png
+    llama-3.1-8b L8: ρ=-0.206, p=0.1510 (n=50) — not significant
+      Highest nFEP:
+        male+rich                 nFEP=0.6059  acc_dev=+0.0454
+        male+fat                  nFEP=0.5906  acc_dev=+0.0296
+        female+jewish             nFEP=0.5870  acc_dev=-0.0081
+        female+hispanic           nFEP=0.5764  acc_dev=+0.0083
+        female+young              nFEP=0.5757  acc_dev=-0.0233
+      Lowest nFEP:
+        female+neurodivergent     nFEP=0.4602  acc_dev=+0.0424
+        male+neurodivergent       nFEP=0.4546  acc_dev=+0.0321
+        male+transgender          nFEP=0.4462  acc_dev=+0.0145
+      Saved: /root/AMBIT/outputs/figures/h2_wino_llama-3.1-8b_L8.png

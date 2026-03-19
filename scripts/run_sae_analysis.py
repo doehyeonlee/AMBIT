@@ -59,6 +59,18 @@ SAE_MODELS = {
         "sae_id_tmpl": "layer_{layer}_width_16k_l0_medium",
         "layers": [17],
     },
+    # ── Llama Scope (Llama 3.1 8B) ──
+    # Unified repo: OpenMOSS-Team/Llama3_1-8B-Base-LXR-8x
+    # Subfolders:   Llama3_1-8B-Base-L{layer}R-8x/checkpoints/final.safetensors
+    # 32 layers total (0-31). We pick early/mid/late analogous to Gemma L9/L20/L31.
+    "llama-3.1-8b": {
+        "hf_id": "meta-llama/Llama-3.1-8B-Instruct",
+        "hf_sae_repo": "OpenMOSS-Team/Llama3_1-8B-Base-LXR-8x",
+        "sae_file_tmpl": "Llama3_1-8B-Base-L{layer}R-8x/checkpoints/final.safetensors",
+        "hp_file_tmpl": "Llama3_1-8B-Base-L{layer}R-8x/hyperparams.json",
+        "layers": [8, 16, 24],
+        "direct_load": "llama_scope",
+    },
 }
 
 
@@ -69,7 +81,7 @@ SAE_MODELS = {
 def _load_csv(filepath):
     """Load CSV rows with demographic parsing."""
     rows = []
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, "r", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         for row in reader:
             demo_str = row.get("demographic_identifier", "[]")
@@ -323,8 +335,12 @@ class SAEExtractor:
         if self.layer in valid_ids:
             return valid_ids[self.layer]
 
+        # Llama Scope: no sae_id needed
+        tmpl = self.cfg.get("sae_id_tmpl")
+        if not tmpl:
+            return None
+
         # Fallback to template
-        tmpl = self.cfg["sae_id_tmpl"]
         if "{l0}" in tmpl:
             layer_l0 = self.cfg.get("layer_l0", {})
             l0 = layer_l0.get(self.layer, 71)
@@ -338,8 +354,10 @@ class SAEExtractor:
         sae_id = self._resolve_sae_id()
 
         # 1. Load SAE
-        if self.cfg.get("direct_load"):
-            # Direct HuggingFace npz loading (SAELens registry incomplete for this model)
+        if self.cfg.get("direct_load") == "llama_scope":
+            self._load_sae_llama_scope()
+        elif self.cfg.get("direct_load"):
+            # Direct HuggingFace npz loading (GemmaScope)
             self._load_sae_direct(sae_id)
         else:
             # SAELens loading
@@ -447,6 +465,85 @@ class SAEExtractor:
         self.sae = _DirectSAE(W_enc, W_dec, b_enc, threshold, self.device)
         print(f"  SAE (direct): d_model={self.sae.d_model}, d_sae={self.sae.d_sae}, id={used_id}")
 
+    def _load_sae_llama_scope(self):
+        """Load Llama Scope SAE from unified repo with per-layer subfolders."""
+        import torch
+        from huggingface_hub import hf_hub_download
+
+        repo_id = self.cfg["hf_sae_repo"]
+        sae_file = self.cfg["sae_file_tmpl"].format(layer=self.layer)
+        hp_file = self.cfg.get("hp_file_tmpl", "").format(layer=self.layer)
+
+        print(f"Loading Llama Scope SAE: {repo_id}/{sae_file}")
+
+        # Download safetensors
+        local_path = hf_hub_download(repo_id=repo_id, filename=sae_file)
+
+        # Download hyperparams for TopK k value
+        k = 32  # default
+        if hp_file:
+            try:
+                hp_path = hf_hub_download(repo_id=repo_id, filename=hp_file)
+                import json as _json
+                with open(hp_path) as f:
+                    hp = _json.load(f)
+                k = hp.get("k", hp.get("top_k", 32))
+                print(f"  hyperparams: k={k}, dict_size={hp.get('dict_size', '?')}")
+            except Exception as e:
+                print(f"  hyperparams not found ({e}), using default k={k}")
+
+        # Load safetensors
+        try:
+            from safetensors.torch import load_file
+            params = load_file(local_path, device="cpu")
+        except ImportError:
+            import safetensors.torch
+            params = safetensors.torch.load_file(local_path, device="cpu")
+
+        print(f"  Keys: {list(params.keys())}")
+
+        # Llama Scope TopK SAE keys (from Language-Model-SAEs):
+        # "encoder.weight" (d_sae, d_model), "encoder.bias" (d_sae,)
+        # "decoder.weight" (d_model, d_sae)
+        # OR: "W_enc" (d_model, d_sae), "b_enc" (d_sae,), "W_dec" (d_sae, d_model)
+        # Try both naming conventions
+        if "encoder.weight" in params:
+            W_enc_raw = params["encoder.weight"]  # (d_sae, d_model)
+            b_enc = params["encoder.bias"]         # (d_sae,)
+            # encoder.weight is (d_sae, d_model) → transpose to (d_model, d_sae)
+            W_enc = W_enc_raw.T.float().to(self.device)
+        elif "W_enc" in params:
+            W_enc = params["W_enc"].float().to(self.device)  # already (d_model, d_sae)
+            b_enc = params["b_enc"]
+        else:
+            raise RuntimeError(f"Unknown SAE weight format. Keys: {list(params.keys())}")
+
+        b_enc = b_enc.float().to(self.device)
+        d_model = W_enc.shape[0]
+        d_sae = W_enc.shape[1]
+
+        class _LlamaScopeSAE:
+            def __init__(self, W_enc, b_enc, device, k):
+                self.W_enc = W_enc
+                self.b_enc = b_enc
+                self.device = device
+                self.d_sae = W_enc.shape[1]
+                self.d_model = W_enc.shape[0]
+                self.k = k
+            def eval(self): return self
+            def encode(self, x):
+                x = x.to(self.device).float()
+                pre_act = x @ self.W_enc + self.b_enc
+                # TopK: keep only top-k activations, zero the rest
+                # Llama Scope TopK does NOT apply ReLU — uses raw topk values
+                topk_vals, topk_idx = torch.topk(pre_act, self.k, dim=-1)
+                result = torch.zeros_like(pre_act)
+                result.scatter_(-1, topk_idx, topk_vals)
+                return result
+
+        self.sae = _LlamaScopeSAE(W_enc, b_enc, self.device, k=k)
+        print(f"  SAE (llama_scope): d_model={d_model}, d_sae={d_sae}, k={k}, repo={repo_id}")
+
     def _clear_sae_cache(self, sae_id):
         """Remove corrupted cached SAE files from HuggingFace cache."""
         import glob
@@ -489,6 +586,19 @@ class SAEExtractor:
             # Cast bfloat16 → float32 for SAE encode
             act = activations["hidden"][0, token_pos, :].unsqueeze(0).to(self.device).float()
             features = self.sae.encode(act)[0].cpu().numpy()
+
+            # Debug: check for all-zero features (first 3 extractions only)
+            if not hasattr(self, '_debug_count'):
+                self._debug_count = 0
+            if self._debug_count < 3:
+                act_norm = float(act.norm())
+                feat_norm = float(np.linalg.norm(features))
+                n_active = int(np.count_nonzero(features))
+                print(f"    [debug] act_norm={act_norm:.2f}, feat_norm={feat_norm:.4f}, "
+                      f"n_active={n_active}/{len(features)}, "
+                      f"act_shape={act.shape}, feat_max={features.max():.4f}, feat_min={features.min():.4f}")
+                self._debug_count += 1
+
             return features
         except Exception as e:
             print(f"    SAE encode error: {e}")
@@ -762,7 +872,8 @@ def main():
     if args.list_models:
         print("SAE-capable models:")
         for name, cfg in SAE_MODELS.items():
-            print(f"  {name:15s} layers={cfg['layers']} release={cfg['sae_release']}")
+            release = cfg.get("sae_release", cfg.get("hf_sae_repo", cfg.get("hf_sae_repo_tmpl", "—")))
+            print(f"  {name:15s} layers={cfg['layers']} release={release}")
         return
 
     if not args.model:
@@ -778,14 +889,22 @@ def main():
     if cfg.get("direct_load"):
         valid_layers = cfg["layers"]
         valid_ids = {}
-        for l in valid_layers:
-            tmpl = cfg["sae_id_tmpl"]
-            if "{l0}" in tmpl:
-                l0 = cfg.get("layer_l0", {}).get(l, 71)
-                valid_ids[l] = tmpl.format(layer=l, l0=l0)
-            else:
-                valid_ids[l] = tmpl.format(layer=l)
-        print(f"Using hardcoded layers for {args.model} (direct HF load):")
+        tmpl = cfg.get("sae_id_tmpl")
+        if tmpl:
+            # GemmaScope: build sae_id from template
+            for l in valid_layers:
+                if "{l0}" in tmpl:
+                    l0 = cfg.get("layer_l0", {}).get(l, 71)
+                    valid_ids[l] = tmpl.format(layer=l, l0=l0)
+                else:
+                    valid_ids[l] = tmpl.format(layer=l)
+        else:
+            # Llama Scope: no sae_id needed, repo+subfolder is per-layer
+            repo = cfg.get("hf_sae_repo", "")
+            file_tmpl = cfg.get("sae_file_tmpl", "")
+            for l in valid_layers:
+                valid_ids[l] = f"{repo}/{file_tmpl.format(layer=l)}"
+        print(f"Using hardcoded layers for {args.model} (direct load):")
         for l in valid_layers:
             print(f"  layer {l:3d} -> {valid_ids[l]}")
     else:

@@ -19,9 +19,10 @@ OUTPUT_DIR = PROJECT_ROOT / "outputs" / "local"
 
 MODEL_REGISTRY = {
     "gemma-3-4b":   {"id": "google/gemma-3-4b-it",   "sae": "gemmascope2"},
+    "gemma-3-12b":   {"id": "google/gemma-3-12b-it",   "sae": "gemmascope2"},
     "gemma-2-9b":   {"id": "google/gemma-2-9b-it",   "sae": "gemmascope"},
-    "qwen3.5-4b":   {"id": "Qwen/Qwen3.5-4B",       "sae": None},
     "mistral-7b":   {"id": "mistralai/Mistral-7B-Instruct-v0.3", "sae": None},
+    "llama-3.1-8b": {"id": "meta-llama/Llama-3.1-8B-Instruct",    "sae": "llamascope"},
 }
 
 SYSTEM_PROMPT = (
@@ -109,7 +110,7 @@ def generate(tok, model, prompt, system=SYSTEM_PROMPT, max_tokens=20):
 
 def load_csv(filepath):
     rows = []
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, "r", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         for row in reader:
             rows.append(row)
@@ -234,6 +235,17 @@ def run(data_file, model_name, max_probes=None, output_dir=None):
     elapsed = time.time() - t_start
     print(f"\nDone in {elapsed/60:.1f}m. Saved: {raw_file.name}, {metrics_file.name}")
     _print_summary(metrics, task, model_name)
+
+    # For coref tasks, also save to behavioral/coref/ so result_wino.py can find them
+    if task == "coref":
+        coref_dir = PROJECT_ROOT / "outputs" / "behavioral" / "coref"
+        coref_dir.mkdir(parents=True, exist_ok=True)
+        import shutil
+        coref_raw = coref_dir / f"raw_coref_{model_name}.json"
+        coref_metrics = coref_dir / f"metrics_coref_{model_name}.json"
+        shutil.copy2(raw_file, coref_raw)
+        shutil.copy2(metrics_file, coref_metrics)
+        print(f"  Also saved to: {coref_dir}/")
 
 
 def _compute_metrics(results, task):

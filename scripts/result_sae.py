@@ -23,6 +23,7 @@ from collections import defaultdict
 from scipy import stats as sp_module
 
 warnings.filterwarnings("ignore", category=FutureWarning)
+FLIP_DOMAINS = {"lbox", "mind"}  # higher score = worse
 
 
 def bootstrap_ci(x, y, stat_func=None, n_boot=2000, ci=95):
@@ -70,7 +71,7 @@ def find_sae_results():
                 dataset_model = parts[0]
                 layer = int(parts[1])
                 # Split dataset_model
-                for ds in ["jobfair", "lbox", "winoidentity"]:
+                for ds in ["jobfair", "lbox", "mind", "winoidentity"]:
                     if dataset_model.startswith(ds + "_"):
                         model = dataset_model[len(ds) + 1:]
                         found.append({
@@ -650,7 +651,7 @@ def main():
                 continue
             dev = val - base_val
             # LBOX: higher score = more severe = worse → flip so positive = favorable
-            if ds == "lbox":
+            if ds in FLIP_DOMAINS:
                 dev = -dev
             joint.append({
                 "identity": ident,
@@ -676,7 +677,7 @@ def main():
         # Top/bottom
         sorted_j = sorted(joint, key=lambda x: x["nfep"], reverse=True)
         metric_label = "acc_dev" if ds == "winoidentity" else "score_dev"
-        dev_note = "(LBOX: negative = more lenient = favorable)" if ds == "lbox" else \
+        dev_note = f"({ds.upper()}: flipped, + = favorable)" if ds in FLIP_DOMAINS else \
                    "(WinoIdentity: accuracy deviation)" if ds == "winoidentity" else ""
         print(f"    Highest nFEP identities: {dev_note}")
         for j in sorted_j[:5]:
@@ -725,6 +726,44 @@ def main():
             print(f"    ρ={cc['spearman_rho']:.3f}, p={cc['p_value']:.4f} "
                   f"({'consistent' if cc['spearman_rho'] > 0.5 else 'divergent'} trait ordering)")
             all_stats[f"cross_sae_{model}"] = cc
+
+    # ── 5. Referent occupation / crime category breakdown ──
+    print("\n=== 5. nFEP by Referent Category ===")
+    for entry in all_sae:
+        ds, model, layer = entry["dataset"], entry["model"], entry["layer"]
+        results = load_sae_results(entry["results_file"])
+        if not results:
+            continue
+
+        # Group by referent_occ
+        by_occ = defaultdict(list)
+        for r in results:
+            occ = r.get("referent_occ", "")
+            if occ:
+                by_occ[occ].append(r["nfep"])
+
+        if len(by_occ) < 2:
+            continue
+
+        occ_means = {occ: (np.mean(vs), len(vs)) for occ, vs in by_occ.items()}
+        sorted_occs = sorted(occ_means.items(), key=lambda x: x[1][0], reverse=True)
+
+        print(f"  [{ds}/{model} L{layer}] {len(by_occ)} categories:")
+        for occ, (mean_nfep, n) in sorted_occs:
+            print(f"    {occ:30s} delta_nfep={mean_nfep:.4f} (n={n})")
+
+        # KW test: does nFEP differ by referent_occ?
+        if len(by_occ) >= 2:
+            groups = [vs for vs in by_occ.values() if len(vs) >= 5]
+            if len(groups) >= 2:
+                from scipy import stats as sp_kw
+                H, p_kw = sp_kw.kruskal(*groups)
+                sig = "*" if p_kw < 0.05 else ""
+                print(f"    Kruskal-Wallis: H={H:.2f}, p={p_kw:.4f}{sig}")
+                all_stats[f"occ_kw_{ds}_{model}_L{layer}"] = {
+                    "H": round(float(H), 4), "p": float(p_kw),
+                    "categories": {occ: round(m, 4) for occ, (m, _) in occ_means.items()},
+                }
 
     # Save
     stats_path = out_dir / "sae_statistical_tests.json"

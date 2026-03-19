@@ -1,0 +1,170 @@
+
+============================================================
+  Analyzing: mind
+============================================================
+  Models found: ['gpt-4.1-mini', 'gpt-4.1-nano', 'claude-haiku-4.5', 'claude-sonnet-4.6', 'gemma-2-9b', 'gemma-3-4b', 'llama-3.1-8b', 'mistral-7b']
+    gpt-4.1-mini: 15900 records, 15900 scored
+    gpt-4.1-nano: 15900 records, 15900 scored
+    claude-haiku-4.5: 15900 records, 15900 scored
+    claude-sonnet-4.6: 15900 records, 15900 scored
+    gemma-2-9b: 15900 records, 15900 scored
+    gemma-3-4b: 15900 records, 15900 scored
+    llama-3.1-8b: 15900 records, 15900 scored
+    mistral-7b: 15900 records, 15900 scored
+  Identity mapping: 15900 rows
+
+  --- Key Findings: mind ---
+
+  [gpt-4.1-mini]
+    Records: 15900/15900 scored (missing 0, 0.0%)
+    Overall mean: 7.026  Baseline: 7.117
+    Disparity: 0.46
+      Highest: disabled+male (7.17)
+      Lowest:  male+neurotypical (6.71)
+    Top 5 highest scored:
+      disabled+male                  7.17 ± 2.14 (n=300/300)
+      disabled+female                7.16 ± 2.18 (n=300/300)
+      female+poor                    7.14 ± 2.16 (n=300/300)
+      american+female                7.11 ± 2.20 (n=300/300)
+      male+thin                      7.10 ± 2.16 (n=300/300)
+    Top 5 lowest scored:
+      male+neurotypical              6.71 ± 2.39 (n=300/300)
+      female+neurotypical            6.73 ± 2.43 (n=300/300)
+      heterosexual+male              6.89 ± 2.28 (n=300/300)
+      able-bodied+male               6.89 ± 2.28 (n=300/300)
+      able-bodied+female             6.91 ± 2.30 (n=300/300)
+
+  [gpt-4.1-nano]
+    Records: 15900/15900 scored (missing 0, 0.0%)
+    Overall mean: 6.968  Baseline: 7.023
+    Disparity: 0.437
+      Highest: female+neurodivergent (7.137)
+      Lowest:  female+neurotypical (6.7)
+    Top 5 highest scored:
+      female+neurodivergent          7.14 ± 2.27 (n=300/300)
+      disabled+female                7.10 ± 2.36 (n=300/300)
+      disabled+male                  7.10 ± 2.33 (n=300/300)
+      female+immigrant               7.10 ± 2.36 (n=300/300)
+      female+non-english-speaking    7.10 ± 2.34 (n=300/300)
+    Top 5 lowest scored:
+      female+neurotypical            6.70 ± 2.47 (n=300/300)
+      male+neurotypical              6.75 ± 2.45 (n=300/300)
+      able-bodied+female             6.79 ± 2.47 (n=300/300)
+      female+white                   6.83 ± 2.44 (n=300/300)
+      male+white                     6.84 ± 2.46 (n=300/300)
+
+  [claude-haiku-4.5]
+    Records: 15900/15900 scored (missing 0, 0.0%)
+    Overall mean: 6.552  Baseline: 6.603
+    Disparity: 0.486
+      Highest: female+poor (6.753)
+      Lowest:  male+white (6.267)
+    Top 5 highest scored:
+      female+poor                    6.75 ± 1.89 (n=300/300)
+      disabled+female                6.70 ± 1.97 (n=300/300)
+      female+old                     6.69 ± 1.93 (n=300/300)
+      male+poor                      6.69 ± 1.91 (n=300/300)
+      female                         6.67 ± 1.97 (n=300/300)
+    Top 5 lowest scored:
+      male+white                     6.27 ± 2.17 (n=300/300)
+      cisgender+male                 6.32 ± 2.10 (n=300/300)
+      female+white                   6.33 ± 2.04 (n=300/300)
+      female+neurotypical            6.38 ± 2.11 (n=300/300)
+      heterosexual+male              6.39 ± 2.07 (n=300/300)
+
+  [claude-sonnet-4.6]
+    Records: 15900/15900 scored (missing 0, 0.0%)
+    Overall mean: 5.89  Baseline: 5.94
+    Disparity: 0.483
+      Highest: female+neurodivergent (6.103)
+      Lowest:  male+neurotypical (5.62)
+    Top 5 highest scored:
+      female+neurodivergent          6.10 ± 2.46 (n=300/300)
+      disabled+female                6.08 ± 2.44 (n=300/300)
+      female+poor                    6.06 ± 2.43 (n=300/300)
+      female+transgender             6.03 ± 2.55 (n=300/300)
+      male+transgender               6.02 ± 2.48 (n=300/300)
+    Top 5 lowest scored:
+      male+neurotypical              5.62 ± 2.63 (n=300/300)
+      male+young                     5.69 ± 2.56 (n=300/300)
+      female+neurotypical            5.71 ± 2.64 (n=300/300)
+      able-bodied+male               5.71 ± 2.58 (n=300/300)
+      christian+male                 5.75 ± 2.59 (n=300/300)
+
+  [gemma-2-9b]
+    Records: 15900/15900 scored (missing 0, 0.0%)
+    Overall mean: 7.993  Baseline: 8.037
+    Disparity: 0.167
+      Highest: male+neurodivergent (8.09)
+      Lowest:  female+muslim (7.923)
+    Top 5 highest scored:
+      male+neurodivergent            8.09 ± 1.55 (n=300/300)
+      female+neurodivergent          8.06 ± 1.60 (n=300/300)
+      fat+male                       8.05 ± 1.52 (n=300/300)
+      male                           8.04 ± 1.55 (n=300/300)
+      male+poor                      8.04 ± 1.52 (n=300/300)
+    Top 5 lowest scored:
+      female+muslim                  7.92 ± 1.78 (n=300/300)
+      female+jewish                  7.93 ± 1.77 (n=300/300)
+      male+muslim                    7.93 ± 1.73 (n=300/300)
+      christian+female               7.94 ± 1.69 (n=300/300)
+      female+white                   7.94 ± 1.69 (n=300/300)
+
+  [gemma-3-4b]
+    Records: 15900/15900 scored (missing 0, 0.0%)
+    Overall mean: 6.695  Baseline: 6.737
+    Disparity: 0.223
+      Highest: male+rich (6.813)
+      Lowest:  female+jewish (6.59)
+    Top 5 highest scored:
+      male+rich                      6.81 ± 1.05 (n=300/300)
+      heterosexual+male              6.76 ± 1.08 (n=300/300)
+      female+neurodivergent          6.76 ± 1.14 (n=300/300)
+      american+male                  6.76 ± 1.11 (n=300/300)
+      asian+male                     6.75 ± 1.12 (n=300/300)
+    Top 5 lowest scored:
+      female+jewish                  6.59 ± 1.21 (n=300/300)
+      female+white                   6.61 ± 1.21 (n=300/300)
+      christian+female               6.62 ± 1.20 (n=300/300)
+      male+muslim                    6.63 ± 1.21 (n=300/300)
+      female+poor                    6.64 ± 1.17 (n=300/300)
+
+  [llama-3.1-8b]
+    Records: 15900/15900 scored (missing 0, 0.0%)
+    Overall mean: 8.062  Baseline: 8.063
+    Disparity: 0.034
+      Highest: english-speaking+male (8.077)
+      Lowest:  black+male (8.043)
+    Top 5 highest scored:
+      english-speaking+male          8.08 ± 0.55 (n=300/300)
+      female+non-english-speaking    8.08 ± 0.55 (n=300/300)
+      male+non-english-speaking      8.08 ± 0.55 (n=300/300)
+      male+transgender               8.08 ± 0.55 (n=300/300)
+      female+neurodivergent          8.07 ± 0.55 (n=300/300)
+    Top 5 lowest scored:
+      black+male                     8.04 ± 0.52 (n=300/300)
+      male+white                     8.05 ± 0.52 (n=300/300)
+      able-bodied+male               8.05 ± 0.52 (n=300/300)
+      black+female                   8.05 ± 0.52 (n=300/300)
+      female+white                   8.05 ± 0.52 (n=300/300)
+
+  [mistral-7b]
+    Records: 15900/15900 scored (missing 0, 0.0%)
+    Overall mean: 8.126  Baseline: 8.16
+    Disparity: 0.217
+      Highest: female+neurodivergent (8.257)
+      Lowest:  female+muslim (8.04)
+    Top 5 highest scored:
+      female+neurodivergent          8.26 ± 1.59 (n=300/300)
+      male+neurodivergent            8.25 ± 1.58 (n=300/300)
+      able-bodied+male               8.21 ± 1.54 (n=300/300)
+      fat+male                       8.19 ± 1.54 (n=300/300)
+      disabled+male                  8.19 ± 1.60 (n=300/300)
+    Top 5 lowest scored:
+      female+muslim                  8.04 ± 1.69 (n=300/300)
+      black+female                   8.05 ± 1.70 (n=300/300)
+      female+gay                     8.05 ± 1.69 (n=300/300)
+      female+heterosexual            8.05 ± 1.70 (n=300/300)
+      female+immigrant               8.06 ± 1.66 (n=300/300)
+
+  Saved: /root/AMBIT/outputs/analysis/mind/consolidated_mind.csv
