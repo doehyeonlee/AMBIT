@@ -1,4 +1,4 @@
-# CrossBias: Intersectional Bias Measurement in LLMs
+# AMBIT: Assessing Model Bias in Intersectional Traits
 
 교차 정체성(Intersectionality)이 LLM의 편향에 미치는 영향을 3가지 맥락에서 측정하고, SAE(Sparse Autoencoder)를 통해 내부 표현의 합성 실패(compositional collapse)를 분석합니다.
 
@@ -15,7 +15,7 @@ python -m scripts.analyze_results --all
 # Step 1: 행동 분석 (JobFair + LBOX) — [A]~[G] 통계 검정 + FDR + Cohen's d
 python -m scripts.result_ans
 
-# Step 2: SAE 분석 (JobFair + LBOX + WinoIdentity) — nFEP + H2 + feature overlap
+# Step 2: SAE 분석 (JobFair + LBOX + Mind + WinoIdentity) — nFEP + H2 + feature overlap
 python -m scripts.result_sae
 
 # Step 3: WinoIdentity 분석 (pronoun→gender, cross-context, SAE 연동)
@@ -47,6 +47,7 @@ Identity 구성: Baseline(1) + Single Gender(2) + Multi(2 gender × 25 traits = 
 ```
 JobFair: deviation = score(identity) − score(neutral)            [양수 = 유리]
 LBOX:    deviation = −(score(identity) − score(neutral))         [양수 = 유리 (관대)]
+Mind:    deviation = −(score(identity) − score(neutral))         [양수 = 유리 (건강)]
 Wino:    deviation = accuracy(identity) − mean_accuracy          [양수 = 더 정확]
 ```
 
@@ -62,18 +63,6 @@ LBOX에서 높은 점수 = 엄격한 형벌 = 피고인에게 불리. Cross-cont
 | gemma-2-9b | Google (open) | Open-source | ✓ GemmaScope | JobFair, LBOX, Wino |
 | gemma-3-4b | Google (open) | Open-source | — | JobFair, LBOX, Wino |
 | mistral-7b | Mistral (open) | Open-source | — | JobFair only |
-
----
-
-## 가설과 검증 결과
-
-| H | Hypothesis | Result | Key Statistic | Evidence |
-|---|-----------|--------|---------------|----------|
-| **H1** | 맥락에 따라 편향 방향이 반전된다 | **Partial ✅** | Gemma rev=76%, Sonnet rev=4% | `cross_context_*.png` |
-| **H2** | SAE collapse가 행동 편향을 예측 | **Partial ⚠️** | LBOX ρ=+.292 (p=.040*) | `h2_identity_*.png` |
-| **H3** | Task-relevance가 SAE collapse 결정 | **Strong ✅** | Layer ρ: 1.0 vs -0.5, overlap 24% vs 11% | `nfep_layers_*.png` |
-| **H4** | 교차 편향이 가산 이상 (super-additive) | **Rejected ❌** | 1/288 OLS sig, Wino I≈0 | `all_statistical_tests.json` |
-| **H5** | Safety training이 불균등 보호 | **Supported ✅** | trans: nFEP↑ behav↑, fat: nFEP↑ behav↓ | `h2_identity_jobfair_*.png` |
 
 ---
 
@@ -216,14 +205,7 @@ export OPENAI_API_KEY=...
 export ANTHROPIC_API_KEY=...
 ```
 
-### Step 1: 데이터 준비
-
-```bash
-python -m scripts.prepare_jobfair --input data/jobfair_train.csv --output data/jobfair.csv
-python -m scripts.prepare_lbox --input data/lbox_english.csv --output data/lbox.csv
-```
-
-### Step 2: API 모델 실험 (Batch)
+### Step 1: API 모델 실험 (Batch)
 
 ```bash
 # JobFair + LBOX
@@ -241,7 +223,7 @@ for prov in openai anthropic; do
 done
 ```
 
-### Step 3: 오픈소스 모델 (GPU 필요)
+### Step 2: 오픈소스 모델 (GPU 필요)
 
 ```bash
 for ds in jobfair lbox; do
@@ -251,7 +233,7 @@ for ds in jobfair lbox; do
 done
 ```
 
-### Step 4: SAE 분석 (GPU, ~1-2h per context)
+### Step 3: SAE 분석 (GPU, ~1-2h per context)
 
 ```bash
 for ds in data/jobfair.csv data/lbox.csv data/winoidentity.csv; do
@@ -309,6 +291,7 @@ python -m scripts.run_one_batch clean --provider openai     # 파일 정리
 ```
 JobFair:      15,900 × 1 = 15,900 calls/model
 LBOX:         15,900 × 1 = 15,900 calls/model
+Mind:         15,900 × 1 = 15,900 calls/model
 WinoIdentity: 79,200 × 1 = 79,200 calls/model
 
 Batch chunk sizes: OpenAI=1,000, Anthropic=5,000
