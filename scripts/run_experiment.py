@@ -36,7 +36,7 @@ OUTPUT_DIR = PROJECT_ROOT / "outputs"
 MODEL_REGISTRY = {
     "openai": {
         "gpt-5-mini":   {"id": "gpt-5-mini-2025-08-07",   "provider": "openai"},
-        "gpt-5-nano":   {"id": "gpt-5-nano-2025-08-07",   "provider": "openai"},
+        "gpt-4.1-nano":   {"id": "gpt-5-nano-2025-08-07",   "provider": "openai"},
         "gpt-4.1-mini": {"id": "gpt-4.1-mini-2025-04-14", "provider": "openai"},
     },
     "anthropic": {
@@ -56,7 +56,9 @@ MODEL_REGISTRY = {
         "gemma-2-9b":   {"id": "google/gemma-2-9b-it",   "provider": "hf", "sae": "gemmascope"},
         #"gemma-2-2b":   {"id": "google/gemma-2-2b-it",   "provider": "hf", "sae": "gemmascope"},
         # Qwen
+        "qwen-2.5-7b":  {"id": "Qwen/Qwen2.5-7B-Instruct",       "provider": "hf", "sae": None},
         "qwen-3.5-9b":  {"id": "Qwen/Qwen3.5-9B",       "provider": "hf", "sae": None},
+        "MolmoPoint-8B":  {"id": "allenai/MolmoPoint-8B",       "provider": "hf", "sae": None},
         "mistral-7b":   {"id": "mistralai/Mistral-7B-Instruct-v0.3", "provider": "hf", "sae": None},
         "llama-3.1-8b": {"id": "meta-llama/Llama-3.1-8B-Instruct",  "provider": "hf",  "sae": "llamascope"},
     },

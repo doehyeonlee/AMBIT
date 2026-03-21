@@ -23,6 +23,8 @@ MODEL_REGISTRY = {
     "gemma-2-9b":   {"id": "google/gemma-2-9b-it",   "sae": "gemmascope"},
     "mistral-7b":   {"id": "mistralai/Mistral-7B-Instruct-v0.3", "sae": None},
     "llama-3.1-8b": {"id": "meta-llama/Llama-3.1-8B-Instruct",    "sae": "llamascope"},
+    "qwen-2.5-7b":  {"id": "Qwen/Qwen2.5-7B-Instruct",       "sae": None},
+    "MolmoPoint-8B":  {"id": "allenai/MolmoPoint-8B",        "sae": None},
 }
 
 SYSTEM_PROMPT = (
