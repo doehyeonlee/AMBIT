@@ -30,11 +30,11 @@ OUT_DIR = PROJECT_ROOT / "outputs" / "sae_check"
 torch.set_grad_enabled(False)
 
 
-def sample_prompts(n_per_ctx=16, seed=0):
+def sample_prompts(n_per_ctx=16, seed=0, contexts=("jobfair", "lbox", "mind")):
     """맥락마다 문항·정체성을 고르게 섞어 n개씩."""
     rng = np.random.default_rng(seed)
     out = []
-    for ctx in ("jobfair", "lbox", "mind"):
+    for ctx in contexts:
         rows = list(csv.DictReader(open(PROJECT_ROOT / "data" / f"{ctx}.csv", encoding="utf-8-sig")))
         for i in rng.choice(len(rows), n_per_ctx, replace=False):
             out.append((ctx, rows[int(i)]["Prompt"].strip()))
@@ -107,6 +107,7 @@ def main():
     ap = argparse.ArgumentParser(description="SAE ↔ 모델 연계성 점검")
     ap.add_argument("--model", required=True, choices=[k for k, v in M.REMOVAL_MODELS.items() if v.get("sae")])
     ap.add_argument("--layers", default=None, help="쉼표 목록 (기본: 2부 층 + 3부 소거 층)")
+    ap.add_argument("--contexts", default="jobfair,lbox,mind", help="표본을 뽑을 맥락 (쉼표 목록)")
     ap.add_argument("--n-per-ctx", type=int, default=16)
     ap.add_argument("--batch", type=int, default=4)
     ap.add_argument("--sae-width", default=None, help="Gemma Scope 폭 덮어쓰기 (예: 131k, 262k)")
@@ -118,7 +119,7 @@ def main():
     d_model = (cfg.get_text_config() if hasattr(cfg, "get_text_config") else cfg).hidden_size
     layers = sorted({int(x) for x in a.layers.split(",")} if a.layers else
                     set(M.sae_layers(a.model)) | {M.sae_mid_layer(a.model, model)})
-    prompts = sample_prompts(a.n_per_ctx)
+    prompts = sample_prompts(a.n_per_ctx, contexts=a.contexts.split(","))
     raw = [p for _, p in prompts]
     chat = [M.format_prompt(tok, a.model, p, SYSTEM_PROMPT) for _, p in prompts]
     bos = tok.bos_token or ""

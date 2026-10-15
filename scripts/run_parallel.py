@@ -2,7 +2,7 @@
 여러 모델을 GPU마다 하나씩 동시에 돌리는 실행기
 
 작업(모델 × 데이터셋)을 큐에 넣고, 빈 GPU가 생길 때마다 CUDA_VISIBLE_DEVICES로 GPU를 지정해 실행한다.
-27B 모델처럼 한 장(40GB)에 안 들어가는 모델은 GPU 2장을 묶어 준다.
+27B 모델처럼 한 장(40GB)에 안 들어가는 모델은 GPU 2장을 묶어 주고, 4B처럼 작은 모델은 한 장에 2개씩 올린다.
 결과 파일이 이미 있으면 건너뛰므로, 중단돼도 같은 명령을 다시 실행하면 남은 작업만 돈다.
 
 모델은 키 또는 세트 이름으로 지정한다 (scripts/removal_models.py의 MODEL_SETS):
@@ -39,8 +39,17 @@ DEFAULT_REMOVAL_EXTRA = "--methods pca,leace,diffmean,affine,sae --alphas 0.5,1.
 GPUS_NEEDED = {"gemma-3-27b": 2, "qwen-3.5-27b": 2}
 
 
+# 작은 모델 → GPU 한 장에 동시에 올릴 작업 수 (gemma-3-4b ≈ 9GB)
+GPU_SHARE = {"gemma-3-4b": 2}
+
+
 def gpus_needed(model: str, gpu_mem_gb: int) -> int:
     return 1 if gpu_mem_gb >= 80 else GPUS_NEEDED.get(model, 1)
+
+
+def gpu_share(model: str, gpu_mem_gb: int) -> int:
+    """GPU 한 장을 나눠 쓸 수 있는 작업 수 (1 = 혼자 씀)."""
+    return GPU_SHARE.get(model, 1) if gpus_needed(model, gpu_mem_gb) == 1 else 1
 
 
 def has_sae(model: str) -> bool:
@@ -93,19 +102,22 @@ def run_stage(task, models, datasets, extra, gpus, mem, force=False, dry_run=Fal
     todo.sort(key=lambda j: -gpus_needed(j["model"], mem))   # 큰 모델을 먼저 배치
     print(f"\n=== {task}: 작업 {len(todo)}개" + (f", 완료돼서 건너뜀 {skipped}개" if skipped else "") + " ===")
     for j in todo:
-        print(f"  [{gpus_needed(j['model'], mem)} GPU] {j['name']}: {' '.join(j['cmd'][2:])}")
+        share = gpu_share(j["model"], mem)
+        print(f"  [{gpus_needed(j['model'], mem)} GPU{f' 1/{share}' if share > 1 else ''}] {j['name']}: {' '.join(j['cmd'][2:])}")
     if dry_run or not todo:
         return True
 
     LOG_DIR.mkdir(exist_ok=True)
-    free, running, summary, t0 = list(gpus), [], {}, time.time()
+    # GPU별 점유율 (1.0 = 꽉 참). 작은 모델은 1/share씩 차지해 한 장에 여러 개가 같이 돈다
+    load, running, summary, t0 = {g: 0.0 for g in gpus}, [], {}, time.time()
     while todo or running:
         for r in running[:]:
             rc = r["proc"].poll()
             if rc is None:
                 continue
             running.remove(r)
-            free.extend(r["gpus"])
+            for g in r["gpus"]:
+                load[g] -= r["weight"]
             dt = (time.time() - r["start"]) / 60
             summary[r["job"]["name"]] = dict(returncode=rc, minutes=round(dt, 1), gpus=r["gpus"], log=str(r["log"]))
             print(f"{'완료' if rc == 0 else '실패'} {r['job']['name']} (GPU {','.join(r['gpus'])}, {dt:.0f}분)"
@@ -115,13 +127,22 @@ def run_stage(task, models, datasets, extra, gpus, mem, force=False, dry_run=Fal
             need = gpus_needed(j["model"], mem)
             if need > len(gpus):
                 print(f"건너뜀 {j['name']}: GPU {need}장 필요"); todo.remove(j); continue
-            if len(free) >= need:
-                use = [free.pop(0) for _ in range(need)]
+            weight = 1.0 / gpu_share(j["model"], mem)
+            if need > 1:
+                idle = [g for g in gpus if load[g] < 1e-6]
+                use = idle[:need] if len(idle) >= need else None
+            else:
+                # 이미 일부 쓰는 GPU부터 채워서 빈 GPU를 큰 모델용으로 남긴다
+                fits = [g for g in gpus if load[g] + weight <= 1 + 1e-6]
+                use = [max(fits, key=lambda g: load[g])] if fits else None
+            if use:
+                for g in use:
+                    load[g] += weight
                 log = LOG_DIR / f"{j['name']}.log"
                 env = os.environ | {"CUDA_VISIBLE_DEVICES": ",".join(use), "PYTHONUNBUFFERED": "1",
                                     "TOKENIZERS_PARALLELISM": "false"}
                 proc = subprocess.Popen(j["cmd"], cwd=PROJECT_ROOT, env=env, stdout=open(log, "w"), stderr=subprocess.STDOUT)
-                running.append(dict(job=j, proc=proc, gpus=use, log=log, start=time.time()))
+                running.append(dict(job=j, proc=proc, gpus=use, weight=weight, log=log, start=time.time()))
                 todo.remove(j)
                 print(f"시작 {j['name']} → GPU {','.join(use)}  (로그 {log.relative_to(PROJECT_ROOT)})", flush=True)
         time.sleep(5)
