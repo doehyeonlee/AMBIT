@@ -260,6 +260,11 @@ python -m scripts.run_one_experiment --data-file data/jobfair.csv --model gemma-
 | `gemma-3-12b` | Gemma Scope 2 (`gemma-scope-2-12b-it`, 16k) | IT | 12 / 24 / 31 / 41 | 24 |
 | `qwen-3-8b` | Qwen-Scope (`SAE-Res-Qwen3-8B-Base-W64K-L0_50`, TopK k=50) | **Base** | 8 / 18 / 27 | 18 |
 
+SAE 선택 근거 (Gemma Scope 기술 보고서 표, Gemma Scope 2 저장소 기준):
+- **Gemma-2-9B**: IT SAE는 residual 9/20/31층에만 있다(폭 2^14=16k, 2^17=131k). PT SAE는 모든 층(16k, 131k)과 20층(최대 1M)에 있다. 기본은 IT 16k(2부와 동일), `--sae-width 131k`로 넓은 IT SAE, 별칭 `gemma-2-9b-ptsae`로 같은 IT 모델에 PT SAE(모든 층)를 붙여 비교한다 — 개입 범위(18~26층)처럼 IT SAE가 없는 층이 필요할 때.
+- **Gemma 3**: Gemma Scope 2는 270M·1B·4B·12B·27B 각각 PT/IT 저장소가 따로 있다(`google/gemma-scope-2-<size>-<pt|it>`). 지시 모델을 쓰므로 IT 저장소를 쓴다. `resid_post/`(25/50/65/85% 깊이, L0 small·medium·big, 폭 16k~1M)를 우선하고, 그 밖의 층은 `resid_post_all/`(모든 층, L0 small·big). `--sae-width 262k`로 넓은 SAE.
+- **Qwen3-8B**: Qwen-Scope는 Base 모델로 학습(TopK k=50, 모든 층). 지시 모델에 쓸 때는 `check`로 EV를 먼저 확인한다. (참고: 같은 계열 Qwen3-1.7B에서 Base SAE를 지시 모델 활성값에 적용하면 EV 0.63~0.74 — 중간층은 WARN.)
+
 층 목록은 `scripts/removal_models.py`의 레지스트리 한 곳에서 정해지고, 2부·3부가 함께 쓴다. `extended` 세트(+ llama-3.1-8b, mistral-7b, gemma-3-27b, qwen-3.5-9b/27b)와 개별 모델 키도 쓸 수 있다.
 
 ```bash

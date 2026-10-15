@@ -62,7 +62,7 @@ def pipeline(tok):
     m.save_pretrained(d); tok.save_pretrained(d)
     M.REMOVAL_MODELS["_tiny"] = dict(hf=d, chat_kwargs=dict(enable_thinking=False), sae=dict(backend="fake", trained_on="base"))
 
-    def fake_sae(name, layer, device="cpu", dtype=torch.float32):
+    def fake_sae(name, layer, device="cpu", dtype=torch.float32, width=None):
         g = torch.Generator().manual_seed(0)
         W_enc, W_dec = torch.randn(64, 256, generator=g) / 8, torch.randn(256, 64, generator=g) / 8
         enc, dec = M._topk(W_enc, torch.zeros(256), W_dec, torch.zeros(64), 16)
@@ -80,7 +80,7 @@ def pipeline(tok):
 def sae_extractor(tok):
     from scripts import run_sae_analysis as S
     m = tiny_models(len(tok))["gemma3-mm"] if "gemma3-mm" in tiny_models(len(tok)) else tiny_models(len(tok))["qwen3"]
-    def fake_sae(name, layer, device="cpu", dtype=torch.float32):
+    def fake_sae(name, layer, device="cpu", dtype=torch.float32, width=None):
         g = torch.Generator().manual_seed(0)
         W_enc, W_dec = torch.randn(64, 256, generator=g) / 8, torch.randn(256, 64, generator=g) / 8
         enc, dec = M._topk(W_enc, torch.zeros(256), W_dec, torch.zeros(64), 16)
@@ -100,7 +100,7 @@ def sae_extractor(tok):
 def check(tok):
     from scripts import check_sae as C
     m = tiny_models(len(tok))["qwen3"]
-    def fake_sae(name, layer, device="cpu", dtype=torch.float32):
+    def fake_sae(name, layer, device="cpu", dtype=torch.float32, width=None):
         g = torch.Generator().manual_seed(layer)
         W_enc, W_dec = torch.randn(64, 256, generator=g) / 8, torch.randn(256, 64, generator=g) / 8
         enc, dec = M._topk(W_enc, torch.zeros(256), W_dec, torch.zeros(64), 16)

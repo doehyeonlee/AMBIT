@@ -26,7 +26,13 @@ REMOVAL_MODELS: dict[str, dict] = {
     "gemma-2-9b": dict(
         hf="google/gemma-2-9b-it",
         sae=dict(backend="gemmascope_npz", repo="google/gemma-scope-9b-it-res", width="16k", target_l0=70,
-                 trained_on="it", layers=[9, 20, 31], mid=20)),   # IT SAE는 이 3개 층에만 공개
+                 trained_on="it", layers=[9, 20, 31], mid=20)),   # IT SAE는 이 3개 층에만 공개 (폭 16k·131k)
+    # 같은 Gemma-2-9B-IT에 PT SAE(모든 층, 16k·131k)를 쓰는 비교용: IT SAE가 없는 층(개입 범위 18~26층 등)과
+    # "IT 모델에 PT SAE를 써도 되는가"를 check_sae로 확인할 때 사용
+    "gemma-2-9b-ptsae": dict(
+        hf="google/gemma-2-9b-it",
+        sae=dict(backend="gemmascope_npz", repo="google/gemma-scope-9b-pt-res", width="16k", target_l0=70,
+                 trained_on="pt", layers=[9, 20, 31], mid=20)),
     # Gemma 3: Gemma Scope 2의 지시 모델 SAE를 HF에서 직접 로드 (hook = model.layers.N.output)
     #   resid_post/     : 25/50/65/85% 깊이, L0 small·medium·big, 폭 16k~1M
     #   resid_post_all/ : 모든 층, L0 small·big
@@ -207,11 +213,14 @@ def _nearest(ids, layer, prefer=()):
     return max(cands, key=lambda s: sum(p in s for p in prefer)), L
 
 
-def load_sae(name: str, layer: int, device="cuda", dtype=torch.float32) -> SAEHandle | None:
-    """layer에 가장 가까운 층의 SAE를 불러온다. 실제 쓰인 층은 meta['layer']."""
+def load_sae(name: str, layer: int, device="cuda", dtype=torch.float32, width: str | None = None) -> SAEHandle | None:
+    """layer에 가장 가까운 층의 SAE를 불러온다. 실제 쓰인 층은 meta['layer'].
+    width: Gemma Scope 계열 폭 덮어쓰기 (예: '131k' — Gemma-2-9B IT SAE, '262k' — Gemma Scope 2)."""
     spec = REMOVAL_MODELS[name].get("sae")
     if not spec:
         return None
+    if width:
+        spec = spec | {"width": width}
     from huggingface_hub import hf_hub_download, HfApi
     T = lambda x: torch.as_tensor(x).to(device=device, dtype=dtype)
     b = spec["backend"]

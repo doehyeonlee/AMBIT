@@ -51,6 +51,9 @@ def build_jobs(task: str, models: list[str], datasets: list[str], extra: str) ->
     jobs, py = [], [sys.executable, "-m"]
     ex = shlex.split(extra) if extra else []
     for m in models:
+        if task in ("behavior", "sae") and m.endswith("-ptsae"):
+            print(f"  ({task}) {m}: SAE 비교용 별칭이라 제외 (check·removal에서만 사용)")
+            continue
         if task in ("check", "sae") and not has_sae(m):
             print(f"  ({task}) {m}: 공개 SAE가 없어 제외")
             continue
