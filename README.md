@@ -248,6 +248,18 @@ for ds in data/jobfair.csv data/lbox.csv data/winoidentity.csv; do
 done
 ```
 
+> **2026-10 수정 — 해당 결과는 다시 돌릴 것**
+> - 이전에는 `max_length=512`로 **오른쪽**을 잘라, 512토큰이 넘는 프롬프트(LBOX 약 13%, Mind 약 33%)는 점수 지시문이 잘린 채 본문 중간 토큰의 특징을 읽었다. 이제 왼쪽을 자르고 한도를 4096으로 올려 마지막 토큰이 항상 프롬프트 끝이다. → **LBOX · Mind의 ΔnFEP 재실행 필요** (JobFair는 토큰 수 추정상 모두 512 이하라 영향 없음)
+> - Llama Scope는 공개 hyperparams대로 JumpReLU(θ, 디코더 노름) + dataset-wise 입력 정규화로 인코딩한다(이전: TopK). → **llama-3.1-8b SAE 결과 재실행 필요**
+> - 층 접근을 `model.model.layers` 하드코딩에서 아키텍처 자동 탐지로 바꿔 Gemma 3 멀티모달 래퍼에서도 동작한다.
+> - 추가 모델: `gemma-3-12b`(Gemma Scope 2, 층 12/24/31/41), `qwen-3-8b`(Qwen-Scope, 층 8/18/27). `gemma-3-4b`는 HF 직접 로드로 변경.
+>
+> ```bash
+> for ds in data/lbox.csv data/mind.csv; do python -m scripts.run_sae_analysis --data-file $ds --model gemma-2-9b --multi-layer; done
+> for m in gemma-3-12b qwen-3-8b; do for ds in data/jobfair.csv data/lbox.csv data/mind.csv; do
+>   python -m scripts.run_sae_analysis --data-file $ds --model $m --multi-layer; done; done
+> ```
+
 ### Step 5: 결과 분석 (CPU, ~5min)
 
 ```bash

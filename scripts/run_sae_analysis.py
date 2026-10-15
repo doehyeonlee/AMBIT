@@ -53,23 +53,31 @@ SAE_MODELS = {
         },
     },
     # ── GemmaScope 2 (Gemma 3) ──
+    # sae_lens 릴리스 이름이 버전마다 달라, removal_models의 HF 직접 로더를 쓴다
+    # (google/gemma-scope-2-*-it, hook = model.layers.N.output, 25/50/65/85% 깊이는 L0 medium)
     "gemma-3-4b": {
         "hf_id": "google/gemma-3-4b-it",
-        "sae_release": "gemma-scope-2-4b-it-res",
-        "sae_id_tmpl": "layer_{layer}_width_16k_l0_medium",
-        "layers": [17],
+        "direct_load": "removal", "removal_key": "gemma-3-4b",
+        "layers": [8, 17, 22, 28],
+    },
+    "gemma-3-12b": {
+        "hf_id": "google/gemma-3-12b-it",
+        "direct_load": "removal", "removal_key": "gemma-3-12b",
+        "layers": [12, 24, 31, 41],
     },
     # ── Llama Scope (Llama 3.1 8B) ──
-    # Unified repo: OpenMOSS-Team/Llama3_1-8B-Base-LXR-8x
-    # Subfolders:   Llama3_1-8B-Base-L{layer}R-8x/checkpoints/final.safetensors
-    # 32 layers total (0-31). We pick early/mid/late analogous to Gemma L9/L20/L31.
+    # 공개 체크포인트는 JumpReLU(θ, 디코더 노름 포함) + dataset-wise 입력 정규화 (hyperparams.json).
+    # 이전 TopK 처리 대신 removal_models의 로더로 hyperparams대로 인코딩한다.
     "llama-3.1-8b": {
         "hf_id": "meta-llama/Llama-3.1-8B-Instruct",
-        "hf_sae_repo": "OpenMOSS-Team/Llama3_1-8B-Base-LXR-8x",
-        "sae_file_tmpl": "Llama3_1-8B-Base-L{layer}R-8x/checkpoints/final.safetensors",
-        "hp_file_tmpl": "Llama3_1-8B-Base-L{layer}R-8x/hyperparams.json",
+        "direct_load": "removal", "removal_key": "llama-3.1-8b",
         "layers": [8, 16, 24],
-        "direct_load": "llama_scope",
+    },
+    # ── Qwen-Scope (Qwen3) ──
+    "qwen-3-8b": {
+        "hf_id": "Qwen/Qwen3-8B",
+        "direct_load": "removal", "removal_key": "qwen-3-8b",
+        "layers": [8, 18, 27],
     },
 }
 
@@ -354,7 +362,15 @@ class SAEExtractor:
         sae_id = self._resolve_sae_id()
 
         # 1. Load SAE
-        if self.cfg.get("direct_load") == "llama_scope":
+        if self.cfg.get("direct_load") == "removal":
+            from scripts import removal_models as RM
+            self.sae = RM.load_sae(self.cfg["removal_key"], self.layer, device=self.device)
+            print(f"  SAE (removal_models): {self.sae.meta['source']}")
+            self.tokenizer, self.model = RM.load_model(self.cfg["removal_key"])
+            self._prep_tokenizer()
+            print(f"  Ready: layer={self.layer}")
+            return
+        elif self.cfg.get("direct_load") == "llama_scope":
             self._load_sae_llama_scope()
         elif self.cfg.get("direct_load"):
             # Direct HuggingFace npz loading (GemmaScope)
@@ -370,7 +386,12 @@ class SAEExtractor:
         self.model = AutoModelForCausalLM.from_pretrained(
             hf_id, dtype=torch.bfloat16, device_map="auto")
         self.model.eval()
+        self._prep_tokenizer()
         print(f"  Ready: layer={self.layer}")
+
+    def _prep_tokenizer(self):
+        # 프롬프트 끝(점수 지시문)이 마지막 토큰이므로, 길면 앞쪽을 자른다
+        self.tokenizer.truncation_side = "left"
 
     def _load_sae_saelens(self, sae_id):
         """Load SAE via sae_lens registry."""
@@ -564,10 +585,12 @@ class SAEExtractor:
             hidden = output[0] if isinstance(output, tuple) else output
             activations["hidden"] = hidden.detach()
 
-        handle = self.model.model.layers[self.layer].register_forward_hook(hook_fn)
+        from scripts.removal_models import get_layers
+        handle = get_layers(self.model)[self.layer].register_forward_hook(hook_fn)
 
         try:
-            inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+            # 이전: max_length=512 오른쪽 자르기 → LBOX·Mind의 긴 프롬프트는 지시문이 잘린 채 본문 중간 토큰을 읽었다
+            inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=4096)
             inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
             with torch.no_grad():
                 self.model(**inputs)
@@ -898,6 +921,9 @@ def main():
                     valid_ids[l] = tmpl.format(layer=l, l0=l0)
                 else:
                     valid_ids[l] = tmpl.format(layer=l)
+        elif cfg.get("direct_load") == "removal":
+            for l in valid_layers:
+                valid_ids[l] = f"{cfg['removal_key']} L{l} (removal_models.load_sae)"
         else:
             # Llama Scope: no sae_id needed, repo+subfolder is per-layer
             repo = cfg.get("hf_sae_repo", "")

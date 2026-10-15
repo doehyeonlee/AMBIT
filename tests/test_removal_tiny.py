@@ -7,6 +7,7 @@
    - 배치 채점 = 한 문항씩 채점 (왼쪽 패딩·position_ids·KV 캐시 경로)
    - 개입 hook이 출력을 바꾸고, 빠져나오면 원래대로 돌아오는지
 2) data/*.csv로 run_removal 전체 파이프라인(6개 기법 + 대조군 + 판정 + 프로브)이 끝까지 도는지
+3) run_sae_analysis의 새 로더 경로(direct_load="removal")와 긴 프롬프트 왼쪽 자르기
 """
 import sys, tempfile
 import numpy as np, torch
@@ -75,8 +76,29 @@ def pipeline(tok):
     run_removal.main()
 
 
+def sae_extractor(tok):
+    from scripts import run_sae_analysis as S
+    m = tiny_models(len(tok))["gemma3-mm"] if "gemma3-mm" in tiny_models(len(tok)) else tiny_models(len(tok))["qwen3"]
+    def fake_sae(name, layer, device="cpu", dtype=torch.float32):
+        g = torch.Generator().manual_seed(0)
+        W_enc, W_dec = torch.randn(64, 256, generator=g) / 8, torch.randn(256, 64, generator=g) / 8
+        enc, dec = M._topk(W_enc, torch.zeros(256), W_dec, torch.zeros(64), 16)
+        return M.SAEHandle(enc, dec, W_dec, dtype, device, dict(source="fake", layer=layer, trained_on="it"))
+    M.load_sae, M.load_model = fake_sae, (lambda name, **kw: (tok, m))
+    S.SAE_MODELS["_tiny"] = {"hf_id": "-", "direct_load": "removal", "removal_key": "_tiny", "layers": [2]}
+    ex = S.SAEExtractor("_tiny", 2, device="cpu")
+    ex.load()
+    long_text = "word " * 5000 + "The higher the score, the more severe."
+    f = ex.extract(long_text)
+    ids = ex.tokenizer(long_text, truncation=True, max_length=4096)["input_ids"]
+    keeps_tail = tok.decode(ids[-5:]).strip().endswith("severe.")
+    print(f"run_sae_analysis 새 로더: 특징 {f.shape}, 활성 {int((f != 0).sum())}개, 긴 프롬프트 끝 보존={keeps_tail}")
+    assert f.shape == (256,) and keeps_tail
+
+
 if __name__ == "__main__":
     tok = AutoTokenizer.from_pretrained(TOK_ID)
     unit(tok)
+    sae_extractor(tok)
     pipeline(tok)
     print("\n모든 점검 통과")
