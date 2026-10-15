@@ -26,16 +26,18 @@ REMOVAL_MODELS: dict[str, dict] = {
     "gemma-2-9b": dict(
         hf="google/gemma-2-9b-it",
         sae=dict(backend="gemmascope_npz", repo="google/gemma-scope-9b-it-res", width="16k", target_l0=70,
-                 trained_on="it")),
+                 trained_on="it", layers=[9, 20, 31], mid=20)),   # IT SAE는 이 3개 층에만 공개
     # Gemma 3: Gemma Scope 2의 지시 모델 SAE를 HF에서 직접 로드 (hook = model.layers.N.output)
     #   resid_post/     : 25/50/65/85% 깊이, L0 small·medium·big, 폭 16k~1M
     #   resid_post_all/ : 모든 층, L0 small·big
     "gemma-3-4b": dict(
         hf="google/gemma-3-4b-it",
-        sae=dict(backend="gemmascope2", repo="google/gemma-scope-2-4b-it", width="16k", trained_on="it")),
+        sae=dict(backend="gemmascope2", repo="google/gemma-scope-2-4b-it", width="16k", trained_on="it",
+                 layers=[9, 17, 22, 29], mid=17)),               # 넓은 sweep(L0 medium) 층 = 25/50/65/85%
     "gemma-3-12b": dict(
         hf="google/gemma-3-12b-it",
-        sae=dict(backend="gemmascope2", repo="google/gemma-scope-2-12b-it", width="16k", trained_on="it")),
+        sae=dict(backend="gemmascope2", repo="google/gemma-scope-2-12b-it", width="16k", trained_on="it",
+                 layers=[12, 24, 31, 41], mid=24)),
     "gemma-3-27b": dict(
         hf="google/gemma-3-27b-it",
         sae=dict(backend="gemmascope2", repo="google/gemma-scope-2-27b-it", width="16k", trained_on="it")),
@@ -44,11 +46,13 @@ REMOVAL_MODELS: dict[str, dict] = {
         hf="meta-llama/Llama-3.1-8B-Instruct",
         sae=dict(backend="llama_scope", repo="OpenMOSS-Team/Llama3_1-8B-Base-LXR-8x",
                  file_tmpl="Llama3_1-8B-Base-L{layer}R-8x/checkpoints/final.safetensors",
-                 hp_tmpl="Llama3_1-8B-Base-L{layer}R-8x/hyperparams.json", trained_on="base")),
+                 hp_tmpl="Llama3_1-8B-Base-L{layer}R-8x/hyperparams.json", trained_on="base",
+                 layers=[8, 16, 24], mid=16)),
     # Qwen-Scope (Qwen3 / Qwen3.5)
     "qwen-3-8b": dict(
         hf="Qwen/Qwen3-8B", chat_kwargs=dict(enable_thinking=False),
-        sae=dict(backend="qwen_scope", repo="Qwen/SAE-Res-Qwen3-8B-Base-W64K-L0_50", k=50, trained_on="base")),
+        sae=dict(backend="qwen_scope", repo="Qwen/SAE-Res-Qwen3-8B-Base-W64K-L0_50", k=50, trained_on="base",
+                 layers=[8, 18, 27], mid=18)),                    # 모든 층(0~35) 공개, Base로 학습
     "qwen-3.5-9b": dict(
         hf="Qwen/Qwen3.5-9B", chat_kwargs=dict(enable_thinking=False),
         sae=dict(backend="qwen_scope", repo="Qwen/SAE-Res-Qwen3.5-9B-Base-W64K-L0_50", k=50, trained_on="base")),
@@ -60,6 +64,40 @@ REMOVAL_MODELS: dict[str, dict] = {
     "qwen-2.5-7b": dict(hf="Qwen/Qwen2.5-7B-Instruct", sae=None),
     "r1-distill-llama-8b": dict(hf="deepseek-ai/DeepSeek-R1-Distill-Llama-8B", sae=None),
 }
+
+
+# 실험 모델 세트 — 행동 측정 · SAE 분석 · 제거를 같은 세트로 돌린다
+MODEL_SETS = {
+    # 최신 모델 + Gemma Scope 계열 (기본)
+    "core": ["gemma-2-9b", "gemma-3-4b", "gemma-3-12b", "qwen-3-8b"],
+    # 비교·확장용
+    "extended": ["gemma-2-9b", "gemma-3-4b", "gemma-3-12b", "qwen-3-8b", "llama-3.1-8b", "mistral-7b",
+                 "gemma-3-27b", "qwen-3.5-9b", "qwen-3.5-27b"],
+}
+
+
+def expand_models(spec: str) -> list[str]:
+    """'core' / 'extended' / 'core,llama-3.1-8b' 처럼 세트 이름과 모델 키를 섞어 쓸 수 있다."""
+    out = []
+    for x in spec.split(","):
+        x = x.strip()
+        for m in MODEL_SETS.get(x, [x] if x else []):
+            if m not in out:
+                out.append(m)
+    return out
+
+
+def sae_layers(name: str) -> list[int]:
+    """2부 SAE 분석 층 (레지스트리가 유일한 기준)."""
+    return list((REMOVAL_MODELS[name].get("sae") or {}).get("layers", []))
+
+
+def sae_mid_layer(name: str, model=None, frac=0.5):
+    """3부 SAE 소거 층: 레지스트리의 mid(2부 가운데 층과 같음), 없으면 깊이 비율."""
+    sae = REMOVAL_MODELS[name].get("sae") or {}
+    if "mid" in sae:
+        return sae["mid"]
+    return depth_to_layer(model, frac) if model is not None else None
 
 
 # --------------------------------------------------------------------------- loading
@@ -255,7 +293,8 @@ def load_sae(name: str, layer: int, device="cuda", dtype=torch.float32) -> SAEHa
         W_dec = W_dec.T if W_dec.shape[0] != W_enc.shape[0] else W_dec   # → (F, d)
         b_dec = sd.get("b_dec", torch.zeros(W_dec.shape[1]))
         W_dec = T(W_dec)
-        enc, dec = _topk(T(W_enc).T, T(sd["b_enc"]), W_dec, T(b_dec), spec["k"], relu=True)
+        # 모델 카드 그대로: 상위 k개 값을 ReLU 없이 사용
+        enc, dec = _topk(T(W_enc).T, T(sd["b_enc"]), W_dec, T(b_dec), spec["k"], relu=False)
         return SAEHandle(enc, dec, W_dec, dtype, device,
                          dict(source=f"{spec['repo']} layer{layer}", layer=layer, trained_on=spec["trained_on"]))
 
