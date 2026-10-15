@@ -19,7 +19,11 @@ OUTPUT_DIR = PROJECT_ROOT / "outputs" / "local"
 
 MODEL_REGISTRY = {
     "gemma-3-4b":   {"id": "google/gemma-3-4b-it",   "sae": "gemmascope2"},
-    "gemma-3-12b":   {"id": "google/gemma-3-12b-it",   "sae": "gemmascope2"},
+    "gemma-3-12b":  {"id": "google/gemma-3-12b-it",  "sae": "gemmascope2"},
+    "gemma-3-27b":  {"id": "google/gemma-3-27b-it",  "sae": "gemmascope2"},
+    "qwen-3-8b":    {"id": "Qwen/Qwen3-8B",          "sae": "qwenscope"},
+    "qwen-3.5-9b":  {"id": "Qwen/Qwen3.5-9B",        "sae": "qwenscope"},
+    "qwen-3.5-27b": {"id": "Qwen/Qwen3.5-27B",       "sae": "qwenscope"},
     "gemma-2-9b":   {"id": "google/gemma-2-9b-it",   "sae": "gemmascope"},
     "mistral-7b":   {"id": "mistralai/Mistral-7B-Instruct-v0.3", "sae": None},
     "llama-3.1-8b": {"id": "meta-llama/Llama-3.1-8B-Instruct",    "sae": "llamascope"},
@@ -91,12 +95,15 @@ def generate(tok, model, prompt, system=SYSTEM_PROMPT, max_tokens=20):
     messages_with_sys = [{"role": "system", "content": system}, {"role": "user", "content": prompt}]
     messages_no_sys = [{"role": "user", "content": f"{system}\n\n{prompt}"}]
 
+    # Qwen3/3.5: 사고 모드를 끄지 않으면 max_tokens 안에 숫자가 나오지 않는다
+    kw = {"enable_thinking": False} if "qwen3" in getattr(tok, "name_or_path", "").lower() else {}
+
     input_text = None
     if hasattr(tok, "apply_chat_template"):
         try:
-            input_text = tok.apply_chat_template(messages_with_sys, tokenize=False, add_generation_prompt=True)
+            input_text = tok.apply_chat_template(messages_with_sys, tokenize=False, add_generation_prompt=True, **kw)
         except Exception:
-            input_text = tok.apply_chat_template(messages_no_sys, tokenize=False, add_generation_prompt=True)
+            input_text = tok.apply_chat_template(messages_no_sys, tokenize=False, add_generation_prompt=True, **kw)
     if not input_text:
         input_text = f"{system}\n\n{prompt}"
 
