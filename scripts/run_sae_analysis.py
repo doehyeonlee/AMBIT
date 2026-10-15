@@ -467,12 +467,15 @@ class SAEExtractor:
         W_dec = torch.tensor(params["W_dec"], dtype=torch.float32, device=self.device)
         b_enc = torch.tensor(params["b_enc"], dtype=torch.float32, device=self.device)
         threshold = torch.tensor(params["threshold"], dtype=torch.float32, device=self.device)
+        b_dec = torch.tensor(params["b_dec"], dtype=torch.float32, device=self.device) \
+            if "b_dec" in params else torch.zeros(W_dec.shape[1], device=self.device)
 
         class _DirectSAE:
-            def __init__(self, W_enc, W_dec, b_enc, threshold, device):
+            def __init__(self, W_enc, W_dec, b_enc, threshold, device, b_dec):
                 self.W_enc = W_enc
                 self.W_dec = W_dec
                 self.b_enc = b_enc
+                self.b_dec = b_dec
                 self.threshold = threshold
                 self.device = device
                 self.d_sae = W_enc.shape[1]
@@ -482,8 +485,10 @@ class SAEExtractor:
                 x = x.to(self.device).float()
                 pre_act = x @ self.W_enc + self.b_enc
                 return torch.where(pre_act > self.threshold, pre_act, torch.zeros_like(pre_act))
+            def decode(self, f):
+                return f @ self.W_dec + self.b_dec
 
-        self.sae = _DirectSAE(W_enc, W_dec, b_enc, threshold, self.device)
+        self.sae = _DirectSAE(W_enc, W_dec, b_enc, threshold, self.device, b_dec)
         print(f"  SAE (direct): d_model={self.sae.d_model}, d_sae={self.sae.d_sae}, id={used_id}")
 
     def _load_sae_llama_scope(self):
@@ -576,6 +581,31 @@ class SAEExtractor:
                 print(f"    Removing cached: {f}")
                 os.remove(f)
 
+    def _accumulate_ev(self, act, feat_t):
+        """재구성 EV 누적 (decode가 있는 SAE만). EV = 1 - Σ‖x-x̂‖² / Σ‖x-x̄‖²"""
+        if not hasattr(self.sae, "decode"):
+            return
+        try:
+            x = act.float()
+            xh = self.sae.decode(feat_t.to(getattr(self.sae, "dtype", feat_t.dtype))).float().reshape(x.shape)
+        except Exception as e:
+            if not getattr(self, "_ev_warned", False):
+                print(f"    EV 계산 불가: {e}")
+                self._ev_warned = True
+            return
+        st = self.__dict__.setdefault("_ev", {"n": 0, "sx": x[0] * 0, "sxx": 0.0, "sr": 0.0})
+        st["n"] += x.shape[0]
+        st["sx"] = st["sx"] + x.sum(0)
+        st["sxx"] += float((x ** 2).sum())
+        st["sr"] += float(((x - xh) ** 2).sum())
+
+    def explained_variance(self):
+        st = getattr(self, "_ev", None)
+        if not st or st["n"] < 2:
+            return None
+        total = st["sxx"] - float((st["sx"] ** 2).sum()) / st["n"]
+        return 1 - st["sr"] / total if total > 0 else None
+
     def extract(self, text, token_pos=-1):
         """Extract SAE features at given token position via forward hook."""
         import torch
@@ -608,7 +638,9 @@ class SAEExtractor:
         try:
             # Cast bfloat16 → float32 for SAE encode
             act = activations["hidden"][0, token_pos, :].unsqueeze(0).to(self.device).float()
-            features = self.sae.encode(act)[0].cpu().numpy()
+            feat_t = self.sae.encode(act)
+            features = feat_t[0].float().cpu().numpy()
+            self._accumulate_ev(act, feat_t)
 
             # Debug: check for all-zero features (first 3 extractions only)
             if not hasattr(self, '_debug_count'):
@@ -777,10 +809,11 @@ def run_analysis(data_file, model_key, layer, max_groups=None, output_dir=None):
                     "results": results}, f, indent=2)
 
     # Compute summary statistics
-    _compute_and_save_summary(results, out_dir, model_key, layer, dataset_name)
+    _compute_and_save_summary(results, out_dir, model_key, layer, dataset_name,
+                              ev=extractor.explained_variance(), ev_n=getattr(extractor, "_ev", {}).get("n", 0))
 
 
-def _compute_and_save_summary(results, out_dir, model_key, layer, dataset_name):
+def _compute_and_save_summary(results, out_dir, model_key, layer, dataset_name, ev=None, ev_n=0):
     """Aggregate FEP by identity and save summary."""
     if not results:
         return
@@ -848,6 +881,7 @@ def _compute_and_save_summary(results, out_dir, model_key, layer, dataset_name):
             "n": len(d_nfeps),
         }
 
+    summary["sae_explained_variance"] = ev
     with open(out_dir / "summary.json", "w") as f:
         json.dump(summary, f, indent=2)
 
@@ -857,6 +891,11 @@ def _compute_and_save_summary(results, out_dir, model_key, layer, dataset_name):
     print(f"  Raw   nFEP: {summary['raw_nfep_mean']:.4f} ± {summary['raw_nfep_std']:.4f}  R²={summary['raw_r2_mean']:.4f}")
     print(f"  Collapse (delta): {summary['delta_collapse']}")
     print(f"  Collapse (raw):   {summary['raw_collapse']}")
+    if ev is None:
+        print("  SAE 재구성 EV: 계산 불가 (decode 없음)")
+    else:
+        print(f"  SAE 재구성 EV={ev:.3f} (마지막 토큰, n={ev_n})"
+              + ("  ← 0.7 미만: SAE 결과 해석 보류" if ev < 0.7 else ""))
 
     # Top 5 most collapsed identities (delta)
     sorted_ids = sorted(summary["by_identity"].items(), key=lambda x: x[1]["delta_nfep"], reverse=True)
