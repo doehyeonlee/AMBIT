@@ -96,6 +96,8 @@ scripts/
 ├── removal_models.py           ← 모델·SAE 레지스트리 (Gemma 2/3, Qwen3/3.5, Llama 3.1 …), 층 자동 탐지
 ├── removal_methods.py          ← 제거 기법 6종, 개입 hook, 0~10 확률 채점, 판정(gate), 프로브
 ├── run_removal.py              ← 맥락 간 전이 행렬 실행기 (중단 후 이어 돌기)
+├── run_parallel.py             ← 여러 모델을 GPU마다 하나씩 동시에 실행 (behavior / sae / removal)
+├── setup_env.sh                ← 환경 점검: 패키지, torch↔torchvision, GPU, HF 로그인
 │
 │  ── 보조 ──
 ├── download_openai_results.py  ← OpenAI batch 결과 재다운로드
@@ -233,12 +235,28 @@ done
 ### Step 2: 오픈소스 모델 (GPU 필요)
 
 ```bash
-for ds in jobfair lbox; do
-  for model in gemma-2-9b gemma-3-4b mistral-8b; do
-    python -m scripts.run_one_experiment --data-file data/${ds}.csv --model $model
-  done
-done
+bash scripts/setup_env.sh      # 처음 한 번: 패키지 설치, torch↔torchvision 버전 맞추기, GPU·HF 로그인 점검
+
+# GPU 여러 장에 모델을 하나씩 동시에 (빈 GPU가 생기면 다음 작업 자동 시작, 끝난 작업은 건너뜀)
+python -m scripts.run_parallel behavior --models gemma-2-9b,gemma-3-4b,mistral-7b --datasets jobfair,lbox,mind
+
+# 한 개씩 돌릴 때
+python -m scripts.run_one_experiment --data-file data/jobfair.csv --model gemma-2-9b
 ```
+
+- 1,000행마다 `outputs/local/<ds>/raw_<ds>_<model>.partial.json`에 중간 저장하고, 다시 실행하면 이어서 돈다.
+- `RuntimeError: operator torchvision::nms does not exist` → torch와 torchvision 버전 불일치. `bash scripts/setup_env.sh`가 고친다.
+- 27B 모델은 40GB GPU 2장을 묶어 쓴다 (80GB GPU면 1장).
+
+### 여러 모델 동시 실행 (`scripts/run_parallel.py`)
+
+| 작업 | 단위 | 예시 |
+|---|---|---|
+| `behavior` | 모델 × 데이터셋 | `python -m scripts.run_parallel behavior --models gemma-3-12b,qwen-3-8b --datasets jobfair,lbox,mind` |
+| `sae` | 모델 × 데이터셋 (층 전부) | `python -m scripts.run_parallel sae --models gemma-2-9b,gemma-3-12b,qwen-3-8b --datasets lbox,mind` |
+| `removal` | 모델 (세 맥락 한 번에) | `python -m scripts.run_parallel removal --models gemma-3-12b,qwen-3-8b,llama-3.1-8b,gemma-2-9b --extra "--methods pca,leace,diffmean,affine,sae"` |
+
+`--gpus 0,1`로 쓸 GPU를 고르고, `--dry-run`으로 배치 계획만 볼 수 있다. 작업별 로그는 `logs/<task>_<model>_<ds>.log`, 요약은 `logs/parallel_<task>.json`.
 
 ### Step 3: SAE 분석 (GPU, ~1-2h per context)
 

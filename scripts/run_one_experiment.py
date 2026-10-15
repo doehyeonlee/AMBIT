@@ -174,12 +174,17 @@ def run(data_file, model_name, max_probes=None, output_dir=None):
     max_tokens = 10 if task == "coref" else 5
     print(f"Task type: {task} (max_tokens={max_tokens})")
 
-    results = []
+    # 중간 저장: 1,000행마다 partial 파일에 기록, 다시 실행하면 이어서 진행
+    partial_file = out_dir / f"raw_{dataset_name}_{model_name}.partial.json"
+    results = json.load(open(partial_file)) if partial_file.exists() else []
+    done_idx = {r["row_idx"] for r in results}
+    if done_idx:
+        print(f"Resuming: {len(done_idx)} rows already done ({partial_file.name})")
     t_start = time.time()
 
     for i, row in enumerate(rows):
         prompt = row.get("Prompt", "").strip()
-        if not prompt:
+        if not prompt or i in done_idx:
             continue
 
         try:
@@ -218,10 +223,13 @@ def run(data_file, model_name, max_probes=None, output_dir=None):
             "task_type": row.get("winobias_task_type", ""),
         })
         results.append(result)
+        if (i + 1) % 1000 == 0:
+            with open(partial_file, "w") as f:
+                json.dump(results, f, default=str)
 
         if (i + 1) % 100 == 0:
             elapsed = time.time() - t_start
-            rate = (i + 1) / elapsed
+            rate = max(len(results) - len(done_idx), 1) / elapsed
             eta = (len(rows) - i - 1) / rate if rate > 0 else 0
             if task == "coref":
                 answered = sum(1 for r in results if r.get("chosen"))
@@ -232,8 +240,10 @@ def run(data_file, model_name, max_probes=None, output_dir=None):
 
     # Save raw results
     raw_file = out_dir / f"raw_{dataset_name}_{model_name}.json"
+    results.sort(key=lambda r: r["row_idx"])
     with open(raw_file, "w") as f:
         json.dump(results, f, indent=2, default=str)
+    partial_file.unlink(missing_ok=True)
 
     # Compute & save metrics
     metrics = _compute_metrics(results, task)
