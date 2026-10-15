@@ -63,8 +63,10 @@ def main():
     ap.add_argument("--control-alphas", default="0.25,0.5,1.0,2.0")
     ap.add_argument("--band", default="0.43,0.62", help="개입 깊이 비율 (Gemma-2-9B 18~26층 ≈ 0.43~0.62)")
     ap.add_argument("--step", type=int, default=2)
-    ap.add_argument("--sae-depth", type=float, default=0.5, help="SAE 소거 층 깊이 (Gemma Scope 2 넓은 SAE: 0.25/0.5/0.65/0.85)")
+    ap.add_argument("--sae-layer", type=int, default=None,
+                    help="SAE 소거 층 (기본: 레지스트리의 mid = 2부 가운데 층. gemma-2-9b 20, gemma-3-4b 17, gemma-3-12b 24, qwen-3-8b 18)")
     ap.add_argument("--sae-feats", type=int, default=32)
+    ap.add_argument("--sae-width", default=None, help="Gemma Scope 폭 덮어쓰기 (예: gemma-2-9b 131k)")
     ap.add_argument("--batch", type=int, default=8)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--no-probe", action="store_true")
@@ -153,7 +155,8 @@ def main():
             tr = train[fc]
             if meth == "sae":
                 if sae is None:
-                    sae = M.load_sae(a.model, M.depth_to_layer(model, a.sae_depth), device=str(R._device(model)))
+                    L0 = a.sae_layer if a.sae_layer is not None else M.sae_mid_layer(a.model, model)
+                    sae = M.load_sae(a.model, L0, device=str(R._device(model)), width=a.sae_width)
                     if sae is None:
                         print(f"{a.model}는 공개 SAE가 없어 sae를 건너뜁니다."); break
                     print(f"SAE: {sae.meta['source']}")

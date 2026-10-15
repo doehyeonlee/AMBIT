@@ -96,7 +96,8 @@ scripts/
 ├── removal_models.py           ← 모델·SAE 레지스트리 (Gemma 2/3, Qwen3/3.5, Llama 3.1 …), 층 자동 탐지
 ├── removal_methods.py          ← 제거 기법 6종, 개입 hook, 0~10 확률 채점, 판정(gate), 프로브
 ├── run_removal.py              ← 맥락 간 전이 행렬 실행기 (중단 후 이어 돌기)
-├── run_parallel.py             ← 여러 모델을 GPU마다 하나씩 동시에 실행 (behavior / sae / removal)
+├── run_parallel.py             ← 여러 모델을 GPU마다 하나씩 동시에 실행 (check / behavior / sae / removal / all)
+├── check_sae.py                ← SAE ↔ 모델 연계성 점검 (EV, L0, 차원)
 ├── setup_env.sh                ← 환경 점검: 패키지, torch↔torchvision, GPU, HF 로그인
 │
 │  ── 보조 ──
@@ -250,13 +251,39 @@ python -m scripts.run_one_experiment --data-file data/jobfair.csv --model gemma-
 
 ### 여러 모델 동시 실행 (`scripts/run_parallel.py`)
 
-| 작업 | 단위 | 예시 |
-|---|---|---|
-| `behavior` | 모델 × 데이터셋 | `python -m scripts.run_parallel behavior --models gemma-3-12b,qwen-3-8b --datasets jobfair,lbox,mind` |
-| `sae` | 모델 × 데이터셋 (층 전부) | `python -m scripts.run_parallel sae --models gemma-2-9b,gemma-3-12b,qwen-3-8b --datasets lbox,mind` |
-| `removal` | 모델 (세 맥락 한 번에) | `python -m scripts.run_parallel removal --models gemma-3-12b,qwen-3-8b,llama-3.1-8b,gemma-2-9b --extra "--methods pca,leace,diffmean,affine,sae"` |
+세 실험(행동 측정 · SAE 분석 · 제거)은 **같은 모델 세트**로 돌린다. 기본 세트 `core`:
 
-`--gpus 0,1`로 쓸 GPU를 고르고, `--dry-run`으로 배치 계획만 볼 수 있다. 작업별 로그는 `logs/<task>_<model>_<ds>.log`, 요약은 `logs/parallel_<task>.json`.
+| 모델 | SAE | SAE 학습 | 2부 SAE 층 | 3부 SAE 소거 층 |
+|---|---|---|---|---|
+| `gemma-2-9b` | Gemma Scope (`gemma-scope-9b-it-res`, 16k) | IT | 9 / 20 / 31 (IT SAE가 있는 층 전부) | 20 |
+| `gemma-3-4b` | Gemma Scope 2 (`gemma-scope-2-4b-it`, 16k) | IT | 9 / 17 / 22 / 29 (L0 medium 넓은 sweep 층) | 17 |
+| `gemma-3-12b` | Gemma Scope 2 (`gemma-scope-2-12b-it`, 16k) | IT | 12 / 24 / 31 / 41 | 24 |
+| `qwen-3-8b` | Qwen-Scope (`SAE-Res-Qwen3-8B-Base-W64K-L0_50`, TopK k=50) | **Base** | 8 / 18 / 27 | 18 |
+
+SAE 선택 근거 (Gemma Scope 기술 보고서 표, Gemma Scope 2 저장소 기준):
+- **Gemma-2-9B**: IT SAE는 residual 9/20/31층에만 있다(폭 2^14=16k, 2^17=131k). PT SAE는 모든 층(16k, 131k)과 20층(최대 1M)에 있다. 기본은 IT 16k(2부와 동일), `--sae-width 131k`로 넓은 IT SAE, 별칭 `gemma-2-9b-ptsae`로 같은 IT 모델에 PT SAE(모든 층)를 붙여 비교한다 — 개입 범위(18~26층)처럼 IT SAE가 없는 층이 필요할 때.
+- **Gemma 3**: Gemma Scope 2는 270M·1B·4B·12B·27B 각각 PT/IT 저장소가 따로 있다(`google/gemma-scope-2-<size>-<pt|it>`). 지시 모델을 쓰므로 IT 저장소를 쓴다. `resid_post/`(25/50/65/85% 깊이, L0 small·medium·big, 폭 16k~1M)를 우선하고, 그 밖의 층은 `resid_post_all/`(모든 층, L0 small·big). `--sae-width 262k`로 넓은 SAE.
+- **Qwen3-8B**: Qwen-Scope는 Base 모델로 학습(TopK k=50, 모든 층). 지시 모델에 쓸 때는 `check`로 EV를 먼저 확인한다. (참고: 같은 계열 Qwen3-1.7B에서 Base SAE를 지시 모델 활성값에 적용하면 EV 0.63~0.74 — 중간층은 WARN.)
+
+층 목록은 `scripts/removal_models.py`의 레지스트리 한 곳에서 정해지고, 2부·3부가 함께 쓴다. `extended` 세트(+ llama-3.1-8b, mistral-7b, gemma-3-27b, qwen-3.5-9b/27b)와 개별 모델 키도 쓸 수 있다.
+
+```bash
+# 네 단계를 순서대로: SAE 점검 → 행동 측정 → SAE 분석 → 제거 (단계마다 모델을 GPU에 하나씩)
+python -m scripts.run_parallel all --models core
+python -m scripts.run_parallel all --models core --dry-run      # 배치 계획만
+
+# 단계별
+python -m scripts.run_parallel check    --models core           # SAE ↔ 모델 연계성 (outputs/sae_check/)
+python -m scripts.run_parallel behavior --models core --datasets jobfair,lbox,mind
+python -m scripts.run_parallel sae      --models core --datasets jobfair,lbox,mind
+python -m scripts.run_parallel removal  --models core --extra "--methods pca,leace,diffmean,affine,sae --alphas 0.5,1.0,2.0"
+```
+
+`--gpus 0,1`로 쓸 GPU를 고르고, 작업별 로그는 `logs/<task>_<model>_<ds>.log`, 요약은 `logs/parallel_<task>.json`. 27B 모델은 40GB GPU 2장을 묶는다. SAE가 없는 모델은 check·sae 단계에서 자동으로 빠진다.
+
+### SAE ↔ 모델 연계성 점검 (`scripts/check_sae.py`)
+
+모델의 실제 활성값(세 맥락 프롬프트 48개, 첫 토큰·패딩 제외 전체 토큰)으로 층마다 재구성 설명 분산(EV), 마지막 토큰 EV, 평균 L0, 차원 일치를 잰다. 2부 방식(raw 프롬프트)과 3부 방식(채팅 템플릿) 두 형식을 모두 본다. **EV ≥ 0.7 OK / 0.5~0.7 WARN / < 0.5 FAIL** — FAIL인 층의 SAE 결과는 쓰지 않는다. 특히 Base로 학습된 Qwen-Scope를 Qwen3-8B(지시 모델)에 쓰는 경우를 여기서 확인한다.
 
 ### Step 3: SAE 분석 (GPU, ~1-2h per context)
 
@@ -267,15 +294,14 @@ done
 ```
 
 > **2026-10 수정 — 해당 결과는 다시 돌릴 것**
-> - 이전에는 `max_length=512`로 **오른쪽**을 잘라, 512토큰이 넘는 프롬프트(LBOX 약 13%, Mind 약 33%)는 점수 지시문이 잘린 채 본문 중간 토큰의 특징을 읽었다. 이제 왼쪽을 자르고 한도를 4096으로 올려 마지막 토큰이 항상 프롬프트 끝이다. → **LBOX · Mind의 ΔnFEP 재실행 필요** (JobFair는 토큰 수 추정상 모두 512 이하라 영향 없음)
+> - 이전에는 `max_length=512`로 **오른쪽**을 잘라, 512토큰이 넘는 프롬프트(LBOX 약 13%, Mind 약 33%)는 점수 지시문이 잘린 채 본문 중간 토큰의 특징을 읽었다. 이제 왼쪽을 자르고 한도를 4096으로 올려 마지막 토큰이 항상 프롬프트 끝이다. → LBOX · Mind의 긴 프롬프트에 영향 (JobFair는 토큰 수 추정상 모두 512 이하)
+> - **ΔnFEP 그룹이 서로 다른 문항을 섞던 문제 수정**: 그룹을 `referent_occ`(맥락마다 3종)로 묶어, inter·baseline은 그 직업/죄명/유형의 첫 문항인데 성별 single은 마지막 문항(다른 이력서·사건·게시글)에서 가져왔다 — 세 맥락 모두 150개 그룹 전부. 이제 같은 53행 블록(같은 문항)에서 baseline·single·inter를 가져온다. → **JobFair 포함 세 맥락 모두 ΔnFEP 재실행 필요**
 > - Llama Scope는 공개 hyperparams대로 JumpReLU(θ, 디코더 노름) + dataset-wise 입력 정규화로 인코딩한다(이전: TopK). → **llama-3.1-8b SAE 결과 재실행 필요**
 > - 층 접근을 `model.model.layers` 하드코딩에서 아키텍처 자동 탐지로 바꿔 Gemma 3 멀티모달 래퍼에서도 동작한다.
-> - 추가 모델: `gemma-3-12b`(Gemma Scope 2, 층 12/24/31/41), `qwen-3-8b`(Qwen-Scope, 층 8/18/27). `gemma-3-4b`는 HF 직접 로드로 변경.
+> - 추가 모델: `gemma-3-12b`(Gemma Scope 2, 층 12/24/31/41), `qwen-3-8b`(Qwen-Scope, 층 8/18/27). `gemma-3-4b`는 HF 직접 로드, 층을 L0 medium SAE가 있는 9/17/22/29로 변경.
 >
 > ```bash
-> for ds in data/lbox.csv data/mind.csv; do python -m scripts.run_sae_analysis --data-file $ds --model gemma-2-9b --multi-layer; done
-> for m in gemma-3-12b qwen-3-8b; do for ds in data/jobfair.csv data/lbox.csv data/mind.csv; do
->   python -m scripts.run_sae_analysis --data-file $ds --model $m --multi-layer; done; done
+> python -m scripts.run_parallel sae --models core --datasets jobfair,lbox,mind
 > ```
 
 ### Step 5: 결과 분석 (CPU, ~5min)
@@ -322,8 +348,8 @@ E   = ΔD − ΔD_ctrl(C)                                초과 감소 (문항 �
 | `gemma-3-12b` | Gemma Scope 2 | IT | **주력**, 5부 이미지 입력과 연결 | 48GB |
 | `qwen-3-8b` | Qwen-Scope | Base | 4부 사고 모드와 공유 | 24~48GB |
 | `llama-3.1-8b` | Llama Scope | Base | 기존 연구(Karvonen & Marks 등) 비교 | 24~48GB |
-| `gemma-2-9b` | Gemma Scope (IT) | IT | 2부 ΔnFEP · 예비 감사 재현 | 48GB |
-| `gemma-3-4b` | Gemma Scope 2 | IT | 개발 · 디버깅 | 24GB |
+| `gemma-2-9b` | Gemma Scope (IT) | IT | core 세트, 2부 ΔnFEP · 예비 감사 재현 | 48GB |
+| `gemma-3-4b` | Gemma Scope 2 | IT | core 세트, 개발 · 디버깅 | 24GB |
 | `qwen-3.5-9b`, `qwen-3.5-27b` | Qwen-Scope | Base / IT | 최신 모델, 규모 확장 | 24GB / 80GB |
 | `mistral-7b`, `qwen-2.5-7b`, `r1-distill-llama-8b` | — | — | SAE 제외 기법만 | 24GB |
 

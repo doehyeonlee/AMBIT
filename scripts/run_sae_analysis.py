@@ -58,12 +58,10 @@ SAE_MODELS = {
     "gemma-3-4b": {
         "hf_id": "google/gemma-3-4b-it",
         "direct_load": "removal", "removal_key": "gemma-3-4b",
-        "layers": [8, 17, 22, 28],
     },
     "gemma-3-12b": {
         "hf_id": "google/gemma-3-12b-it",
         "direct_load": "removal", "removal_key": "gemma-3-12b",
-        "layers": [12, 24, 31, 41],
     },
     # ── Llama Scope (Llama 3.1 8B) ──
     # 공개 체크포인트는 JumpReLU(θ, 디코더 노름 포함) + dataset-wise 입력 정규화 (hyperparams.json).
@@ -71,15 +69,24 @@ SAE_MODELS = {
     "llama-3.1-8b": {
         "hf_id": "meta-llama/Llama-3.1-8B-Instruct",
         "direct_load": "removal", "removal_key": "llama-3.1-8b",
-        "layers": [8, 16, 24],
     },
     # ── Qwen-Scope (Qwen3) ──
     "qwen-3-8b": {
         "hf_id": "Qwen/Qwen3-8B",
         "direct_load": "removal", "removal_key": "qwen-3-8b",
-        "layers": [8, 18, 27],
     },
 }
+
+
+# removal_models 로더를 쓰는 모델은 층 목록도 레지스트리 하나에서 가져온다 (3부 SAE 소거 층과 일치)
+def _fill_registry_layers():
+    from scripts.removal_models import sae_layers
+    for v in SAE_MODELS.values():
+        if v.get("direct_load") == "removal":
+            v["layers"] = sae_layers(v["removal_key"])
+
+
+_fill_registry_layers()
 
 
 # ═══════════════════════════════════════
@@ -220,6 +227,7 @@ def _group_winoidentity(rows, max_groups=None):
 
         groups.append({
             "referent_occ": occ,
+            "item_id": it,
             "identity_a": gender,
             "identity_b": trait,
             "combined": f"{gender}+{trait}",
@@ -253,37 +261,37 @@ def _group_scoring(rows, max_groups=None):
 
     print(f"Loaded {len(rows)} rows: {len(baselines)} baseline, {len(singles)} single, {len(multis)} multi")
 
-    # Index singles and baselines by referent_occ
-    single_by_occ_trait = defaultdict(dict)  # {occ: {trait: row}}
+    # 문항(item) 단위로 묶는다: 데이터는 baseline 1행으로 시작하는 53행 블록이 한 문항.
+    # 이전에는 referent_occ(맥락마다 3종뿐)로 묶어, inter·baseline은 그 직업의 첫 문항,
+    # single은 마지막 문항에서 가져와 서로 다른 이력서/사건 사이의 차이가 Δf_a에 섞였다.
+    item_of, item = {}, -1
+    for r in rows:
+        if r["n_demo"] == 0:
+            item += 1
+        item_of[id(r)] = item
+
+    single_by_item_trait = defaultdict(dict)  # {item: {trait: row}}
     for r in singles:
-        trait = r["demographic"][0]
-        occ = r["referent_occ"]
-        single_by_occ_trait[occ][trait] = r
+        single_by_item_trait[item_of[id(r)]][r["demographic"][0]] = r
+    base_by_item = {item_of[id(r)]: r for r in baselines}
 
-    base_by_occ = defaultdict(list)
-    for r in baselines:
-        base_by_occ[r["referent_occ"]].append(r)
-
-    # Build groups: for each multi-identity row, find matching baseline + singles
+    # Build groups: for each multi-identity row, find matching baseline + singles from the SAME item
     groups = []
     seen = set()
     for r in multis:
         trait_a, trait_b = r["demographic"][0], r["demographic"][1]
         occ = r["referent_occ"]
+        it = item_of[id(r)]
         group_key = f"{occ}_{trait_a}_{trait_b}"
 
         if group_key in seen:
             continue
         seen.add(group_key)
 
-        # Find baseline
-        bases = base_by_occ.get(occ, [])
-        if not bases:
+        baseline = base_by_item.get(it)
+        if baseline is None:
             continue
-        baseline = bases[0]
-
-        # Find singles: need one for trait_a AND one for trait_b
-        occ_singles = single_by_occ_trait.get(occ, {})
+        occ_singles = single_by_item_trait.get(it, {})
         single_a = occ_singles.get(trait_a)
         single_b = occ_singles.get(trait_b)
 
@@ -296,6 +304,7 @@ def _group_scoring(rows, max_groups=None):
 
         groups.append({
             "referent_occ": occ,
+            "item_id": it,
             "identity_a": trait_a,
             "identity_b": trait_b,
             "combined": f"{trait_a}+{trait_b}",

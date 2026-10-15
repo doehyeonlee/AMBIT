@@ -8,6 +8,7 @@
    - 개입 hook이 출력을 바꾸고, 빠져나오면 원래대로 돌아오는지
 2) data/*.csv로 run_removal 전체 파이프라인(6개 기법 + 대조군 + 판정 + 프로브)이 끝까지 도는지
 3) run_sae_analysis의 새 로더 경로(direct_load="removal")와 긴 프롬프트 왼쪽 자르기
+4) check_sae: 실제 CSV 프롬프트로 층별 EV·L0·차원 점검이 끝까지 도는지
 """
 import sys, tempfile
 import numpy as np, torch
@@ -61,7 +62,7 @@ def pipeline(tok):
     m.save_pretrained(d); tok.save_pretrained(d)
     M.REMOVAL_MODELS["_tiny"] = dict(hf=d, chat_kwargs=dict(enable_thinking=False), sae=dict(backend="fake", trained_on="base"))
 
-    def fake_sae(name, layer, device="cpu", dtype=torch.float32):
+    def fake_sae(name, layer, device="cpu", dtype=torch.float32, width=None):
         g = torch.Generator().manual_seed(0)
         W_enc, W_dec = torch.randn(64, 256, generator=g) / 8, torch.randn(256, 64, generator=g) / 8
         enc, dec = M._topk(W_enc, torch.zeros(256), W_dec, torch.zeros(64), 16)
@@ -79,7 +80,7 @@ def pipeline(tok):
 def sae_extractor(tok):
     from scripts import run_sae_analysis as S
     m = tiny_models(len(tok))["gemma3-mm"] if "gemma3-mm" in tiny_models(len(tok)) else tiny_models(len(tok))["qwen3"]
-    def fake_sae(name, layer, device="cpu", dtype=torch.float32):
+    def fake_sae(name, layer, device="cpu", dtype=torch.float32, width=None):
         g = torch.Generator().manual_seed(0)
         W_enc, W_dec = torch.randn(64, 256, generator=g) / 8, torch.randn(256, 64, generator=g) / 8
         enc, dec = M._topk(W_enc, torch.zeros(256), W_dec, torch.zeros(64), 16)
@@ -96,9 +97,28 @@ def sae_extractor(tok):
     assert f.shape == (256,) and keeps_tail
 
 
+def check(tok):
+    from scripts import check_sae as C
+    m = tiny_models(len(tok))["qwen3"]
+    def fake_sae(name, layer, device="cpu", dtype=torch.float32, width=None):
+        g = torch.Generator().manual_seed(layer)
+        W_enc, W_dec = torch.randn(64, 256, generator=g) / 8, torch.randn(256, 64, generator=g) / 8
+        enc, dec = M._topk(W_enc, torch.zeros(256), W_dec, torch.zeros(64), 16)
+        return M.SAEHandle(enc, dec, W_dec, dtype, device, dict(source="fake", layer=layer, trained_on="base"))
+    M.load_sae, M.load_model = fake_sae, (lambda name, **kw: (tok, m))
+    M.REMOVAL_MODELS["_tiny"] = dict(hf="-", chat_kwargs=dict(enable_thinking=False),
+                                     sae=dict(backend="fake", trained_on="base", layers=[1, 3], mid=2))
+    d = tempfile.mkdtemp()
+    sys.argv = ["x", "--model", "_tiny", "--n-per-ctx", "2", "--output-dir", d]
+    C.main()
+    rep = __import__("json").load(open(f"{d}/_tiny.json"))
+    assert set(rep["layers"]) == {"1", "2", "3"} and all("raw" in r for r in rep["layers"].values())
+
+
 if __name__ == "__main__":
     tok = AutoTokenizer.from_pretrained(TOK_ID)
     unit(tok)
     sae_extractor(tok)
+    check(tok)
     pipeline(tok)
     print("\n모든 점검 통과")
