@@ -64,6 +64,8 @@ LBOX에서 높은 점수 = 엄격한 형벌 = 피고인에게 불리. Cross-cont
 | gemma-3-4b | Google (open) | Open-source | — | JobFair, LBOX, Wino |
 | mistral-7b | Mistral (open) | Open-source | — | JobFair only |
 
+추가 지원(행동 측정 `run_one_experiment` · 제거 `run_removal`): gemma-3-12b, gemma-3-27b, llama-3.1-8b, qwen-3-8b, qwen-3.5-9b, qwen-3.5-27b
+
 ---
 
 ## 코드 구조
@@ -89,6 +91,11 @@ scripts/
 │  ── WinoIdentity Batch (coreference) ──
 ├── run_experiment.py           ← WinoIdentity 실험 구조 (batch/run_batch에서 호출)
 ├── run_batch.py                ← WinoIdentity coreference Batch 처리
+│
+│  ── 3부: 편향 제거 + 압축 통제 판정 ──
+├── removal_models.py           ← 모델·SAE 레지스트리 (Gemma 2/3, Qwen3/3.5, Llama 3.1 …), 층 자동 탐지
+├── removal_methods.py          ← 제거 기법 6종, 개입 hook, 0~10 확률 채점, 판정(gate), 프로브
+├── run_removal.py              ← 맥락 간 전이 행렬 실행기 (중단 후 이어 돌기)
 │
 │  ── 보조 ──
 ├── download_openai_results.py  ← OpenAI batch 결과 재다운로드
@@ -241,6 +248,18 @@ for ds in data/jobfair.csv data/lbox.csv data/winoidentity.csv; do
 done
 ```
 
+> **2026-10 수정 — 해당 결과는 다시 돌릴 것**
+> - 이전에는 `max_length=512`로 **오른쪽**을 잘라, 512토큰이 넘는 프롬프트(LBOX 약 13%, Mind 약 33%)는 점수 지시문이 잘린 채 본문 중간 토큰의 특징을 읽었다. 이제 왼쪽을 자르고 한도를 4096으로 올려 마지막 토큰이 항상 프롬프트 끝이다. → **LBOX · Mind의 ΔnFEP 재실행 필요** (JobFair는 토큰 수 추정상 모두 512 이하라 영향 없음)
+> - Llama Scope는 공개 hyperparams대로 JumpReLU(θ, 디코더 노름) + dataset-wise 입력 정규화로 인코딩한다(이전: TopK). → **llama-3.1-8b SAE 결과 재실행 필요**
+> - 층 접근을 `model.model.layers` 하드코딩에서 아키텍처 자동 탐지로 바꿔 Gemma 3 멀티모달 래퍼에서도 동작한다.
+> - 추가 모델: `gemma-3-12b`(Gemma Scope 2, 층 12/24/31/41), `qwen-3-8b`(Qwen-Scope, 층 8/18/27). `gemma-3-4b`는 HF 직접 로드로 변경.
+>
+> ```bash
+> for ds in data/lbox.csv data/mind.csv; do python -m scripts.run_sae_analysis --data-file $ds --model gemma-2-9b --multi-layer; done
+> for m in gemma-3-12b qwen-3-8b; do for ds in data/jobfair.csv data/lbox.csv data/mind.csv; do
+>   python -m scripts.run_sae_analysis --data-file $ds --model $m --multi-layer; done; done
+> ```
+
 ### Step 5: 결과 분석 (CPU, ~5min)
 
 ```bash
@@ -249,6 +268,78 @@ python -m scripts.result_ans
 python -m scripts.result_sae
 python -m scripts.result_wino
 ```
+
+---
+
+## 3부: 편향 제거 + 압축 통제 판정
+
+격차가 줄었을 때 그것이 **정체성 제거**인지, 출력 점수가 좁아진 **분산 압축**인지 가린다.
+
+```
+ΔD  = disparity(before) − disparity(after)          격차 감소
+C   = 1 − Var(score_after) / Var(score_before)       출력 압축률
+ΔD_ctrl(C)  ← 정체성과 무관한 대조군(무작위 방향 · 전체 활성 PCA)을 여러 강도로 돌려 보간
+E   = ΔD − ΔD_ctrl(C)                                초과 감소 (문항 단위 부트스트랩 95% CI)
+행동 개선: CI 하한 > 0      표현 제거: MLP 프로브 ≤ 우연 + 0.05
+→ 진짜 제거 / 분리(행동만) / 비활성 소거(표현만) / 압축·무효
+```
+
+### 제거 기법 (추론 시점, 잔차 스트림 hook)
+
+| 기법 | 개입 | 방향 추정 | 강도 |
+|---|---|---|---|
+| `pca` | h′ = h − α·UUᵀh | 정체성별 평균 − 중립 평균의 상위 k 주성분 | α |
+| `leace` | h′ = h − α·W⁺PW(h − μ) | 활성값 + 정체성 원-핫 (닫힌 해) | α |
+| `diffmean` | h′ = h − α(h·v̂)v̂ | v = μ정체성 − μ중립 | α |
+| `affine` | h′ = h − α((h − μ중립)·v̂)v̂ | 정체성 / 중립 평균 | α |
+| `steer` | h′ = h − α·v | 대조 평균 차이 | α |
+| `sae` | h′ = h − α·Σᵢ∈S fᵢ(h)dᵢ (재구성 오차 유지) | 중립 대비 활성 차이 상위 특징 | 특징 수, α |
+
+층은 **깊이 비율**(`--band 0.43,0.62`, Gemma-2-9B의 18~26층)로 지정하고, 개입하는 층마다 그 층의 활성값으로 방향을 따로 추정한다. SAE 소거는 SAE가 있는 층 하나에만 적용한다.
+
+### 지원 모델 (`python -m scripts.run_removal --list-models`)
+
+| key | 공개 SAE | SAE 학습 | 용도 | GPU |
+|---|---|---|---|---|
+| `gemma-3-12b` | Gemma Scope 2 | IT | **주력**, 5부 이미지 입력과 연결 | 48GB |
+| `qwen-3-8b` | Qwen-Scope | Base | 4부 사고 모드와 공유 | 24~48GB |
+| `llama-3.1-8b` | Llama Scope | Base | 기존 연구(Karvonen & Marks 등) 비교 | 24~48GB |
+| `gemma-2-9b` | Gemma Scope (IT) | IT | 2부 ΔnFEP · 예비 감사 재현 | 48GB |
+| `gemma-3-4b` | Gemma Scope 2 | IT | 개발 · 디버깅 | 24GB |
+| `qwen-3.5-9b`, `qwen-3.5-27b` | Qwen-Scope | Base / IT | 최신 모델, 규모 확장 | 24GB / 80GB |
+| `mistral-7b`, `qwen-2.5-7b`, `r1-distill-llama-8b` | — | — | SAE 제외 기법만 | 24GB |
+
+새 모델은 `REMOVAL_MODELS`에 한 줄 추가하면 된다. Base로 학습된 SAE는 실행 로그의 `재구성 EV`를 확인하고, 0.7 미만이면 SAE 결과는 해석하지 않는다.
+
+### 실행
+
+```bash
+pip install -r requirements.txt
+python -m tests.test_removal_tiny                     # GPU 없이 파이프라인 점검 (작은 무작위 모델)
+
+# 10분 점검
+python -m scripts.run_removal --model gemma-3-4b --n-train 4 --n-test 4 --methods diffmean --alphas 1.0
+
+# 본 실행 (중단돼도 같은 명령으로 이어서 돈다)
+nohup python -m scripts.run_removal --model gemma-3-12b \
+    --methods pca,leace,diffmean,affine,sae --alphas 0.5,1.0,2.0 > removal_g3.log 2>&1 &
+
+# 오늘 밤 축소판: 정체성 10개
+python -m scripts.run_removal --model gemma-2-9b --methods pca,leace,diffmean \
+    --identities male,female,female+black,male+black,female+old,male+rich,female+poor,male+gay,female+disabled,male+immigrant
+```
+
+결과: `outputs/removal/<model>.json` — `runs["diffmean|jobfair|1.0"]["eval"]["lbox"]`에 E, CI, 압축률, 프로브, 판정이 들어 있다.
+
+### 서버 (2026년 10월 시세, 시간당)
+
+| GPU | 가격 | 돌릴 수 있는 모델 |
+|---|---|---|
+| RTX A6000 / L40 (48GB) | $0.35~0.82 | 9~12B 전부 — **기본 추천** |
+| RTX 4090 (24GB) | ≈ $0.5 | 8B 이하 |
+| A100 80GB | $1.09~1.79 | 27B |
+
+기본 설정(맥락당 평가 30문항 × 53행 × 3맥락 ≈ 4,800행/조건, 조건 ≈ 45개)으로 12B 모델 하나가 48GB GPU에서 약 10시간(추정). 모델 캐시는 영구 볼륨에 두고(`HF_HOME`), 스팟 인스턴스는 이어 돌기와 함께 쓴다. Gemma·Llama는 Hugging Face에서 라이선스 동의 후 `hf auth login`.
 
 ---
 
