@@ -10,6 +10,7 @@
   km_ace       Karvonen & Marks 2025 · github.com/adamkarvonen/llm_bias      없음     절차를 재구현 (코드 복사 안 함)
   arditi       Arditi et al. 2024 · github.com/andyrdt/refusal_direction     Apache   절차를 재구현
   caa          Rimsky(Panickssery) et al. 2024 · github.com/nrimsky/CAA      MIT      절차를 재구현
+  splice       Holstege, Ravfogel, Wouters (NeurIPS 2025) · opt-separation    없음     절차를 재구현 (proj.opt_sep_proj)
 
 각 기법의 원 코드 대비 차이는 함수 docstring의 "원 코드와 다른 점"에 적었다.
 라이선스가 없는 저장소(llm_bias)는 코드를 옮기지 않고 같은 계산을 새로 작성했으며,
@@ -202,3 +203,57 @@ def caa_candidates(acts_by_layer, items):
         diffs = [x - base[(it["context"], it["item_id"])] for x, it in zip(a, items) if it["identity"] != "neutral"]
         out[l] = CAAEdit(np.mean(diffs, 0), l)
     return out
+
+
+# ---------------------------------------------------------------- 5) SPLICE: 정체성 선형 보호 + 과제 공분산 보존
+class LowRankEdit:
+    """h' = h − α · L R (h − μ).  (I − P)가 낮은 계수일 때 d×d 행렬 대신 L(d×k), R(k×d)만 저장한다."""
+    def __init__(self, L, R, mu):
+        self.L, self.R, self.mu = L.astype(np.float32), R.astype(np.float32), mu.astype(np.float32)
+
+    def apply(self, h, alpha):
+        L = torch.as_tensor(self.L, device=h.device)
+        R = torch.as_tensor(self.R, device=h.device)
+        x = h.float() - torch.as_tensor(self.mu, device=h.device)
+        return (h.float() - alpha * (x @ R.T) @ L.T).to(h.dtype)
+
+
+def _cov(X, Y):
+    """교차 공분산 (열 평균을 뺀 뒤 Xᵀ Y / n). 방향만 쓰이므로 정규화 상수는 결과에 영향이 없다."""
+    Y = Y.reshape(len(Y), -1)
+    return (X - X.mean(0)).T @ (Y - Y.mean(0)) / len(X)
+
+
+def _orth_basis(A, tol=1e-10):
+    U, s, _ = np.linalg.svd(A, full_matrices=False)
+    return U[:, s > tol * max(s.max(), 1e-300)]
+
+
+def fit_splice(acts, items, y, eps=1e-8):
+    """SPLICE (Holstege, Ravfogel, Wouters 2025)의 opt_sep_proj와 같은 계산.
+      백화 W = Cov(X)^(-1/2) (고윳값 < eps는 0으로) → v = Cov(XW, z), u = Cov(XW, y)
+      백화 공간에서 v 방향을 지우되(kernel) u는 보존하는(range) 사영:  P' = I − V (ẼᵀV)⁻¹ Ẽᵀ,
+        Ẽ = span{u, v} 안에서 u에 직교하는 정규직교 기저 (원 코드 find_orthogonal_vector_multi와 같은 부분공간)
+      원 공간: h' = h − W⁺ V (ẼᵀV)⁻¹ Ẽᵀ W (h − μ)
+    z = 정체성 지시 변수(중립 = 0 벡터), y = 문항별 중립 점수(정체성 없이 모델이 준 점수, 같은 문항의 모든 행에 같은 값).
+    원 코드와 다른 점 하나: 원 코드는 P* = W⁺P'W라서 표본 수 < 차원이면 학습 데이터가 덮지 않는 방향을 모두 0으로
+    만든다(우리 설정: 1,060행 < 3,584차원). 여기서는 I − W⁺(I − P')W로 써서 그 방향은 그대로 둔다(LEACE와 같은 처리).
+    Cov(X)가 정칙이면 두 식은 정확히 같다 (tests/test_reference_methods.py)."""
+    X = np.asarray(acts, dtype=np.float64)
+    ids = sorted({it["identity"] for it in items} - {"neutral"})
+    Z = np.array([[it["identity"] == c for c in ids] for it in items], float)
+    mu = X.mean(0)
+    Xc = X - mu
+    ev, Vec = np.linalg.eigh(np.cov(Xc, rowvar=False))
+    ev[ev < eps] = 0
+    nz = ev > 0
+    W = (Vec[:, nz] / np.sqrt(ev[nz])) @ Vec[:, nz].T
+    Winv = (Vec[:, nz] * np.sqrt(ev[nz])) @ Vec[:, nz].T
+    XW = Xc @ W
+    V = _orth_basis(_cov(XW, Z))
+    u = _cov(XW, np.asarray(y, float))
+    u = u / np.linalg.norm(u)
+    Q = _orth_basis(np.column_stack([u, V]))
+    Et = _orth_basis(Q - u @ (u.T @ Q))[:, :V.shape[1]]
+    L = Winv @ V @ np.linalg.pinv(Et.T @ V)
+    return LowRankEdit(L, Et.T @ W, mu)

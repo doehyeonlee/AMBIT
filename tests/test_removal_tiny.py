@@ -6,7 +6,7 @@
    - 디코더 층을 찾는지
    - 배치 채점 = 한 문항씩 채점 (왼쪽 패딩·position_ids·KV 캐시 경로)
    - 개입 hook이 출력을 바꾸고, 빠져나오면 원래대로 돌아오는지
-2) data/*.csv로 run_removal 전체 파이프라인(6개 기법 + 원 논문 방식 4개 + 대조군 + 판정 + 프로브)이 끝까지 도는지
+2) data/*.csv로 run_removal 전체 파이프라인(6개 기법 + 원 논문 방식 5개 + PACE와 절제 6개 + 대조군 + 판정 + 프로브)이 끝까지 도는지
 3) run_sae_analysis의 새 로더 경로(direct_load="removal")와 긴 프롬프트 왼쪽 자르기
 4) check_sae: 실제 CSV 프롬프트로 층별 EV·L0·차원 점검이 끝까지 도는지
 """
@@ -71,8 +71,8 @@ def pipeline(tok):
     M.load_model.__defaults__ = (torch.float32, None)
     from scripts import run_removal
     sys.argv = ["x", "--model", "_tiny", "--n-train", "2", "--n-test", "2", "--batch", "8",
-                "--identities", "male,female,female+old,male+rich,female+gay",
-                "--methods", "pca,leace,diffmean,affine,steer,sae,leace_ref,km_ace,arditi,caa", "--alphas", "1.0", "--control-alphas", "0.5,1.0",
+                "--identities", "male,female,female+old,male+rich,female+gay", "--pace-pool", "4",
+                "--methods", "pca,leace,diffmean,affine,steer,sae,leace_ref,km_ace,arditi,caa,splice,pace,pace_routed,pace_eye,pace_group,pace_noanchor,pace_early", "--alphas", "1.0", "--control-alphas", "0.5,1.0",
                 "--output-dir", d + "/out"]
     run_removal.main()
 

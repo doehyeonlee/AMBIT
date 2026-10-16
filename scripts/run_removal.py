@@ -10,7 +10,9 @@ Usage:
   # 본 실행
   python -m scripts.run_removal --model gemma-3-12b --methods pca,leace,diffmean,affine,sae
   # 원 논문 공개 코드 방식 비교군 (scripts/reference_methods.py)
-  python -m scripts.run_removal --model gemma-3-12b --methods leace_ref,km_ace,arditi,caa
+  python -m scripts.run_removal --model gemma-3-12b --methods leace_ref,km_ace,arditi,caa,splice
+  # 제안 기법 PACE와 절제 (scripts/pace.py)
+  python -m scripts.run_removal --model gemma-3-12b --methods pace,pace_routed,pace_eye,pace_group,pace_noanchor,pace_early
   python -m scripts.run_removal --list-models
 
 입력: data/{jobfair,lbox,mind}.csv (53행 = 문항 하나: baseline 1 + 성별 2 + 성별×속성 50)
@@ -24,6 +26,7 @@ import numpy as np
 from scripts import removal_models as M
 from scripts import removal_methods as R
 from scripts import reference_methods as F
+from scripts import pace as P
 from scripts.run_one_experiment import SYSTEM_PROMPT
 
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -31,7 +34,9 @@ OUT_DIR = PROJECT_ROOT / "outputs" / "removal"
 BLOCK = 53
 FITTERS = {"pca": R.fit_pca, "leace": R.fit_leace, "diffmean": R.fit_diffmean,
            "affine": R.fit_affine, "steer": R.fit_steer, "leace_ref": F.fit_leace_ref}
-REFERENCE = {"leace_ref", "km_ace", "arditi", "caa"}   # 원 논문 공개 코드 방식 (reference_methods.py)
+REFERENCE = {"leace_ref", "km_ace", "arditi", "caa", "splice"}   # 원 논문 공개 코드 방식 (reference_methods.py)
+PACE = {"pace": {}, "pace_routed": {}, "pace_eye": dict(metric="eye"), "pace_group": dict(delta="group"),
+        "pace_noanchor": dict(anchor=False), "pace_early": {}}      # 제안 기법과 절제 (pace.py)
 
 
 def load_context(ctx, n_train, n_test, identities, seed):
@@ -55,6 +60,16 @@ def load_context(ctx, n_train, n_test, identities, seed):
     return items
 
 
+def load_neutral_pool(ctx, n_train, n_test, n_pool, seed):
+    """학습 · 평가에 쓰지 않은 문항들의 중립 프롬프트 (PACE의 과제 분산 S_T 추정용). load_context와 같은 순열을 써서
+    평가 문항과 절대 겹치지 않는다."""
+    rows = list(csv.DictReader(open(PROJECT_ROOT / "data" / f"{ctx}.csv", encoding="utf-8-sig")))
+    perm = np.random.default_rng(seed).permutation(len(rows) // BLOCK)
+    pool = perm[n_train + n_test:n_train + n_test + n_pool]
+    return [dict(context=ctx, item_id=int(i), identity="neutral", split="pool",
+                 prompt=rows[int(i) * BLOCK]["Prompt"].strip()) for i in pool]
+
+
 def main():
     ap = argparse.ArgumentParser(description="3부: 제거 기법 × 맥락 간 전이 × 압축 통제 판정")
     ap.add_argument("--model", choices=list(M.REMOVAL_MODELS))
@@ -63,7 +78,8 @@ def main():
     ap.add_argument("--n-test", type=int, default=30, help="맥락당 평가 문항 수")
     ap.add_argument("--identities", default="all", help="'all' 또는 쉼표 목록 (예: male,female,black+female)")
     ap.add_argument("--methods", default="pca,leace,diffmean",
-                    help="pca,leace,diffmean,affine,steer,sae / 원 논문 방식: leace_ref,km_ace,arditi,caa")
+                    help="pca,leace,diffmean,affine,steer,sae / 원 논문 방식: leace_ref,km_ace,arditi,caa,splice / "
+                         "제안: pace,pace_routed (+ 절제 pace_eye,pace_group,pace_noanchor,pace_early)")
     ap.add_argument("--alphas", default="0.5,1.0")
     ap.add_argument("--control-alphas", default="0.25,0.5,1.0,2.0")
     ap.add_argument("--band", default="0.43,0.62", help="개입 깊이 비율 (Gemma-2-9B 18~26층 ≈ 0.43~0.62)")
@@ -79,6 +95,12 @@ def main():
                     help="arditi·caa 방향을 뽑을 층: search = 원 논문처럼 후보 층마다 학습 문항으로 평가해 고름, mid = 개입 구간 가운데")
     ap.add_argument("--select-max-c", type=float, default=0.1,
                     help="search에서 학습 문항 압축률 C가 이 값을 넘는 층은 제외 (Arditi의 KL < 0.1 필터 역할)")
+    ap.add_argument("--pace-band", default="0.55,0.62",
+                    help="PACE 개입 깊이 (인과 구간: Gemma-2-9B 23~26층 ≈ 0.55~0.62). pace_early는 --band를 쓴다")
+    ap.add_argument("--pace-k", type=int, default=4, help="PACE 방향 수")
+    ap.add_argument("--pace-eps", type=float, default=1.0,
+                    help="S_T 축소 계수 (평균 고윳값 대비). 작을수록 과제 분산을 더 지키고 정체성 효과를 덜 지운다 — 0.1,1,5 절제 권장")
+    ap.add_argument("--pace-pool", type=int, default=100, help="S_T 추정에 더할 학습 · 평가 밖 중립 문항 수 (맥락당)")
     ap.add_argument("--batch", type=int, default=8)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--no-probe", action="store_true")
@@ -155,6 +177,26 @@ def main():
         for c in ctxs:
             ctrl_runs[c].append((R.compression(B[c][0], S[c][0]), R.deviations(*S[c])))
 
+    def train_base(fc):
+        res.setdefault("train_base", {})
+        if fc not in res["train_base"]:
+            res["train_base"][fc] = R.score_items(model, tok, train[fc], a.batch).tolist(); save()
+        return np.array(res["train_base"][fc])
+
+    pace_band = M.depth_band(model, *map(float, a.pace_band.split(",")), a.step)
+    pool_cache = {}
+
+    def neutral_pool_acts(c, layers):
+        if a.pace_pool <= 0:
+            return {l: None for l in layers}
+        key = (c, tuple(layers))
+        if key not in pool_cache:
+            pool = load_neutral_pool(c, a.n_train, a.n_test, a.pace_pool, a.seed)
+            for it in pool:
+                it["text"] = M.format_prompt(tok, a.model, it["prompt"], SYSTEM_PROMPT)
+            pool_cache[key] = R.collect_acts(model, tok, pool, layers, a.batch)
+        return pool_cache[key]
+
     def select_layer(meth, fc, cands):
         """Arditi(방향 선택) · CAA(층 스윕)처럼 후보 층마다 학습 문항에서 α=1로 개입해 격차가 가장 작은 층을 고른다.
         평가 문항은 쓰지 않는다. 압축률이 select-max-c를 넘는 후보는 제외."""
@@ -164,10 +206,7 @@ def main():
         if a.select == "mid":
             return mid
         tr = train[fc]
-        res.setdefault("train_base", {})
-        if fc not in res["train_base"]:
-            res["train_base"][fc] = R.score_items(model, tok, tr, a.batch).tolist(); save()
-        tb = np.array(res["train_base"][fc])
+        tb = train_base(fc)
         log, best = {}, None
         for l, e in cands.items():
             with R.Intervention(model, {l: e}, 1.0):
@@ -185,11 +224,11 @@ def main():
     alphas = list(map(float, a.alphas.split(",")))
     sae = None
     for meth in a.methods.split(","):
-        for fc in ctxs:
+        for fc in (["all"] if meth == "pace_routed" else ctxs):
             todo = [al for al in alphas if f"{meth}|{fc}|{al}" not in res["runs"]]
             if not todo:
                 continue
-            tr = train[fc]
+            tr = train[fc] if fc != "all" else None
             if meth == "sae":
                 if sae is None:
                     L0 = a.sae_layer if a.sae_layer is not None else M.sae_mid_layer(a.model, model)
@@ -216,6 +255,27 @@ def main():
                 res.setdefault("selected_layer", {})[f"{meth}|{fc}"] = L
                 print(f"{meth}|{fc}: 방향 층 {L}" + (" (모든 층에서 소거)" if meth == "arditi" else " (이 층 마지막 위치에 적용)"))
                 edits = {max(band): cands[L]} if meth == "arditi" else {L: cands[L]}
+            elif meth == "splice":
+                # y = 문항별 중립 점수 (정체성 없이 모델이 준 점수) → "문항마다 점수가 달라야 하는 이유"를 보존
+                tb = train_base(fc)
+                neu = {it["item_id"]: s for s, it in zip(tb, tr) if it["identity"] == "neutral"}
+                y = np.array([neu[it["item_id"]] for it in tr])
+                acts = R.collect_acts(model, tok, tr, band, a.batch)
+                edits = {l: F.fit_splice(acts[l], tr, y) for l in band}
+            elif meth in PACE:
+                layers = band if meth == "pace_early" else pace_band
+                kw = dict(k=a.pace_k, eps=a.pace_eps) | PACE[meth]
+                if meth == "pace_routed":
+                    acts = {c: R.collect_acts(model, tok, train[c], layers, a.batch) for c in ctxs}
+                    pools = {c: neutral_pool_acts(c, layers) for c in ctxs}
+                    edits = {l: P.fit_pace_routed({c: acts[c][l] for c in ctxs}, train,
+                                                  {c: pools[c][l] for c in ctxs}, **kw) for l in layers}
+                else:
+                    acts = R.collect_acts(model, tok, tr, layers, a.batch)
+                    pool = neutral_pool_acts(fc, layers)
+                    edits = {l: P.fit_pace(acts[l], tr, pool[l], **kw) for l in layers}
+                    res.setdefault("pace_info", {})[f"{meth}|{fc}"] = {str(l): e.info for l, e in edits.items()}
+                print(f"{meth}|{fc}: 층 {layers}")
             else:
                 edits = R.fit_per_layer(FITTERS[meth], R.collect_acts(model, tok, tr, band, a.batch), tr)
             for al in todo:
