@@ -22,6 +22,7 @@ huggingface_hub         # hf_hub_download (직접 npz fallback)
 # ── 3부 제거 실험 (run_removal.py) ──
 scikit-learn            # 표현 잔존 프로브 (로지스틱 / MLP)
 safetensors             # Llama Scope SAE 직접 로드
+concept-erasure         # leace_ref: LEACE 공식 구현 (EleutherAI)
 
 # ── Visualization (visualize.py) ──
 matplotlib

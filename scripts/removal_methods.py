@@ -204,7 +204,12 @@ class Intervention:
 
     def __enter__(self):
         blocks = get_layers(self.model)
-        self.h = [blocks[l].register_forward_hook(self._mk(e)) for l, e in self.edits.items()]
+        self.h = []
+        for l, e in self.edits.items():
+            if hasattr(e, "register"):      # 여러 층에 스스로 hook을 거는 편집 (reference_methods.ArditiAblation)
+                self.h += e.register(self.model, self.alpha)
+            else:
+                self.h.append(blocks[l].register_forward_hook(self._mk(e)))
         return self
 
     def __exit__(self, *a):

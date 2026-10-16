@@ -17,7 +17,7 @@ Usage:
   python -m scripts.run_parallel check    --models core                 # SAE ↔ 모델 연계성
   python -m scripts.run_parallel behavior --models core --datasets jobfair,lbox,mind
   python -m scripts.run_parallel sae      --models core --datasets jobfair,lbox,mind
-  python -m scripts.run_parallel removal  --models core --extra "--methods pca,leace,diffmean,affine,sae --alphas 0.5,1.0,2.0"
+  python -m scripts.run_parallel removal  --models core --extra "--methods pca,leace,diffmean,affine,sae,leace_ref,km_ace,arditi,caa --alphas 0.5,1.0,2.0"
 
   # 계획만 보기
   python -m scripts.run_parallel all --models core --dry-run
@@ -33,7 +33,7 @@ from scripts.removal_models import REMOVAL_MODELS, expand_models
 PROJECT_ROOT = Path(__file__).parent.parent
 LOG_DIR = PROJECT_ROOT / "logs"
 STAGES = ["check", "behavior", "sae", "removal"]
-DEFAULT_REMOVAL_EXTRA = "--methods pca,leace,diffmean,affine,sae --alphas 0.5,1.0,2.0"
+DEFAULT_REMOVAL_EXTRA = "--methods pca,leace,diffmean,affine,sae,leace_ref,km_ace,arditi,caa --alphas 0.5,1.0,2.0"
 
 # 한 장(40GB A100 기준)에 안 들어가는 모델 → 필요한 GPU 수
 GPUS_NEEDED = {"gemma-3-27b": 2, "qwen-3.5-27b": 2}
