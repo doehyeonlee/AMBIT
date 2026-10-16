@@ -44,7 +44,7 @@ def collect_acts_mean(model, tok, items, layers, batch=8):
         for i in range(0, len(items), batch):
             enc = _encode(tok, [it["text"] for it in items[i:i + batch]], _device(model))
             mask["m"] = enc["attention_mask"].float()
-            model(**enc, use_cache=False)
+            model(**enc, use_cache=False, logits_to_keep=1)
     finally:
         for h in hs:
             h.remove()
