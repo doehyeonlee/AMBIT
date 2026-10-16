@@ -129,11 +129,15 @@ def fit_leace(acts, items, ridge=1e-3):
     z = 정체성 원-핫(중립 제외). 검증용으로는 `pip install concept-erasure`의 LeaceEraser와 비교 권장."""
     ids = sorted({it["identity"] for it in items} - {"neutral"})
     Z = np.array([[it["identity"] == c for c in ids] for it in items], float)
+    # float64 + 고윳값 하한: Gemma 3처럼 활성값 노름이 큰(~3e4) 층에서 float32 공분산은 정밀도가 ridge보다 낮아
+    # 음의 고윳값이 생기고 ev ** -0.5가 NaN이 된다 (gemma-3-4b 20층: 1060행 × 2560차원에서 157개)
+    acts = np.asarray(acts, dtype=np.float64)
     mu = acts.mean(0)
     X = acts - mu
     Sxx = X.T @ X / len(X) + ridge * np.eye(X.shape[1])
     Sxz = X.T @ (Z - Z.mean(0)) / len(X)
     ev, V = np.linalg.eigh(Sxx)
+    ev = np.clip(ev, ridge, None)
     W, Winv = V @ np.diag(ev ** -0.5) @ V.T, V @ np.diag(ev ** 0.5) @ V.T
     Q = _orth(W @ Sxz)
     return LeaceEdit(M=Winv @ Q @ Q.T @ W, mu=mu)
