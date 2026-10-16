@@ -6,10 +6,13 @@
 2) km_ace    : llm_bias의 get_mean_diff_activations + get_projection_ablation_hook과 같은 값
 3) arditi    : refusal_direction의 hook을 같은 위치에 건 모델과 logits가 같고, 모든 층 잔차에서 방향 성분이 0
 4) caa       : 마지막 위치만 바뀜, 벡터 = 문항별 (정체성 − 중립) 평균
+5) splice    : 정체성 교차 공분산 0, 과제 y와의 공분산 보존, 표본 < 차원이면 데이터 밖 방향은 그대로,
+               (원 코드가 있으면) proj.opt_sep_proj와 같은 값
 
 원 저장소와 비교하는 2)·3)은 저장소를 내려받아 경로를 주면 실행되고, 없으면 건너뛴다:
   git clone https://github.com/adamkarvonen/llm_bias      &&  export LLM_BIAS_PATH=$PWD/llm_bias
   git clone https://github.com/andyrdt/refusal_direction  &&  export REFUSAL_DIRECTION_PATH=$PWD/refusal_direction
+  SPLICE 원 코드(opt-separation) 폴더                     →  export SPLICE_PATH=<폴더>
 """
 import os, sys
 import numpy as np, torch
@@ -141,9 +144,44 @@ def test_caa():
     assert unchanged == 0 and last < 1e-5 and np.abs(c.v - want).max() < 1e-5
 
 
+def test_splice():
+    items, X = toy_items(n_items=40, d=24)                     # 360행 > 24차원 (공분산 정칙)
+    item_q = {i: rng.standard_normal() for i in range(40)}
+    y = np.array([item_q[it["item_id"]] for it in items])
+    X = X + np.outer(y, rng.standard_normal(24))              # 과제 신호를 활성값에 심는다
+    e = F.fit_splice(X, items, y)
+    ids = sorted({it["identity"] for it in items} - {"neutral"})
+    Z = np.array([[it["identity"] == c for c in ids] for it in items], float)
+    Xp = e.apply(torch.as_tensor(X), 1.0).numpy().astype(np.float64)
+    cz = np.abs(F._cov(Xp, Z)).max()
+    cy = np.abs(F._cov(Xp, y) - F._cov(X.astype(np.float64), y)).max()
+    print(f"splice: 지운 뒤 정체성 교차 공분산 최대 {cz:.1e}, 과제 공분산 변화 최대 {cy:.1e}")
+    assert cz < 1e-3 and cy < 1e-3
+    items2, X2 = toy_items(n_items=3, d=64)                    # 27행 < 64차원
+    e2 = F.fit_splice(X2, items2, rng.standard_normal(len(items2)))
+    _, _, Vt = np.linalg.svd(X2 - X2.mean(0))
+    out = Vt[-1].astype(np.float32)                            # 학습 데이터가 덮지 않는 방향
+    h = torch.as_tensor(X2.mean(0) + 5 * out)[None]
+    moved = (e2.apply(h, 1.0)[0] - h[0]).abs().max().item()
+    print(f"  표본 < 차원: 데이터 밖 방향 변화 {moved:.1e} (원 코드는 이 성분을 0으로 만든다)")
+    assert moved < 1e-3
+    path = os.environ.get("SPLICE_PATH")
+    if not path:
+        print("  (SPLICE_PATH 없음: 원 코드 비교 건너뜀)"); return
+    sys.path.insert(0, path)
+    from proj import proj
+    pr = proj()
+    pr.fit(X.astype(np.float64), Z, y.reshape(-1, 1), method="opt-sep-proj")
+    theirs = pr.apply_projection(X.astype(np.float64))
+    diff = np.abs(theirs - Xp).max()
+    print(f"  원 코드 proj.opt_sep_proj와 최대 차이 {diff:.1e}")
+    assert diff < 1e-3
+
+
 if __name__ == "__main__":
     test_leace_ref()
     test_km_ace()
     test_arditi()
     test_caa()
+    test_splice()
     print("OK")

@@ -276,7 +276,7 @@ python -m scripts.run_parallel all --models core --dry-run      # 배치 계획�
 python -m scripts.run_parallel check    --models core           # SAE ↔ 모델 연계성 (outputs/sae_check/)
 python -m scripts.run_parallel behavior --models core --datasets jobfair,lbox,mind
 python -m scripts.run_parallel sae      --models core --datasets jobfair,lbox,mind
-python -m scripts.run_parallel removal  --models core --extra "--methods pca,leace,diffmean,affine,sae,leace_ref,km_ace,arditi,caa --alphas 0.5,1.0,2.0"
+python -m scripts.run_parallel removal  --models core --extra "--methods pca,leace,diffmean,affine,sae,leace_ref,km_ace,arditi,caa,splice,pace,pace_routed --alphas 0.5,1.0,2.0"
 ```
 
 `--gpus 0,1`로 쓸 GPU를 고르고, 작업별 로그는 `logs/<task>_<model>_<ds>.log`, 요약은 `logs/parallel_<task>.json`. 27B 모델은 40GB GPU 2장을 묶는다. SAE가 없는 모델은 check·sae 단계에서 자동으로 빠진다.
@@ -351,8 +351,41 @@ E   = ΔD − ΔD_ctrl(C)                                초과 감소 (문항 �
 | `km_ace` | Karvonen & Marks 2025 · [adamkarvonen/llm_bias](https://github.com/adamkarvonen/llm_bias) (라이선스 없음 → 재구현) | 토큰 평균 활성값, 표준편차로 나눈 백화 방향, 두 집단 투영 평균의 중점으로 이동, 전 층 · 모든 위치 | 인종 · 성별 대신 성별 + 속성별 이진 방향(`--km-types`), 방향은 AMBIT 학습 문항으로 추정 |
 | `arditi` | Arditi et al. 2024 · [andyrdt/refusal_direction](https://github.com/andyrdt/refusal_direction) (Apache-2.0) | 한 층에서 뽑은 평균 차이 방향을 **모든 층**의 블록 입력과 attn · mlp 출력에서 소거, 후보 층 중 선택 | 선택 기준 = 학습 문항 격차 최소 + 압축률 C ≤ 0.1 (원 논문의 거부 점수 + KL < 0.1 필터 대응) |
 | `caa` | Rimsky(Panickssery) et al. 2024 · [nrimsky/CAA](https://github.com/nrimsky/CAA) (MIT) | 정규화하지 않은 쌍 평균 차이 벡터를 한 층, 지시문 끝 이후 위치에 더함 (층 스윕) | 벡터를 빼는 방향(배수 −α), 층 선택은 `arditi`와 같은 기준 |
+| `splice` | Holstege, Ravfogel, Wouters, NeurIPS 2025 · opt-separation (라이선스 없음 → 재구현) | 백화 공간에서 정체성 교차 공분산 방향을 지우는 사영(kernel)이 과제 y와의 공분산을 보존(range) — `proj.opt_sep_proj` | y = 문항별 중립 점수(정답 점수가 없는 채점 과제). 표본 < 차원일 때 원 코드는 학습 데이터 밖 방향을 0으로 만드는데, 여기서는 LEACE처럼 그대로 둔다(공분산이 정칙이면 원 코드와 같음) |
 
-`tests/test_reference_methods.py`가 원 저장소 함수와 수치가 같은지 확인한다 (원 저장소를 받고 `LLM_BIAS_PATH`, `REFUSAL_DIRECTION_PATH`를 주면 비교, 없으면 건너뜀). 확인 결과: LEACE 최대 차이 7.7e-07, Karvonen & Marks 7.2e-07, Arditi logits 차이 0.
+`tests/test_reference_methods.py`가 원 저장소 함수와 수치가 같은지 확인한다 (원 저장소를 받고 `LLM_BIAS_PATH`, `REFUSAL_DIRECTION_PATH`, `SPLICE_PATH`를 주면 비교, 없으면 건너뜀). 확인 결과: LEACE 최대 차이 7.7e-07, Karvonen & Marks 7.2e-07, Arditi logits 차이 0, SPLICE 8.6e-07.
+
+### 제안 기법: PACE (`scripts/pace.py`, 초안)
+
+**Paired, Anchored, Compression-aware Erasure.** 감사 결과(격차 감소의 대부분이 분산 압축, 정보 제거와 행동 변화의 분리, 인과 구간과 맥락 특이성)를 설계 원칙으로 바꾼 기법이다. 정체성 **정보**가 아니라 정체성이 점수에 미치는 **효과**를, 과제 신호의 분산을 최소로 건드리게 지운다.
+
+```
+Δ = h(문항 i, 정체성 g) − h(문항 i, 중립)           짝지은 반사실 정체성 효과
+S_T = Cov_i(h(i, 중립)) + ε·(tr/d)·I               문항 간 과제 신호 (라벨 불필요, 학습·평가 밖 중립 문항으로 보강)
+S_Δ u = λ S_T u 의 상위 k개 → U                    과제 분산 단위당 정체성 효과가 큰 방향
+h' = h − α U (UᵀMU)⁻¹ UᵀM (h − μ_중립),  M = S_T⁻¹  같은 범위의 선형 편집 중 지우는 과제 분산이 최소 (tests/test_pace.py)
+```
+
+| | 무엇을 지우나 | 무엇을 지키나 | 압축 |
+|---|---|---|---|
+| `leace`, `leace_ref` | 정체성의 선형 복원 가능성 | 전체 변형 최소 | 고려 안 함 |
+| `splice` | 정체성의 선형 복원 가능성 | 과제 y와의 공분산 (y 필요) | 간접 |
+| `affine`, `km_ace` | 평균 차이 방향을 중립/중점으로 이동 | — | 고려 안 함 |
+| `steer`, `caa` | 평균 차이 벡터를 뺌 (중립 입력도 밀림) | — | 고려 안 함 |
+| **`pace`** | **점수에 미치는 정체성 효과 (문항별 짝)** | **문항 간 과제 분산 (라벨 없이)** | **목적함수에 포함** |
+
+PACE는 정체성이 여전히 디코딩될 수 있다(예상 판정: 분리). 그것이 주장이다 — 공정한 결정에는 정보의 삭제가 아니라 효과의 차단이 필요하다. 과제 방향과 겹치는 정체성 효과는 과제를 해치지 않고는 지울 수 없으므로 남긴다(장난감: 이론 하한 34%, ε = 1에서 42% 남김, 지운 과제 분산 0.3% vs DiffMean 26%). 남은 몫이 격차에 영향을 주는지는 판정 E가 가린다.
+
+| 키 | 설정 | 확인하는 것 |
+|---|---|---|
+| `pace` | 짝 Δ, M = S_T⁻¹, 중립 앵커, 인과 구간 `--pace-band 0.55,0.62`, 학습 맥락 하나로 추정 | 기본 (전이 행렬) |
+| `pace_routed` | 맥락마다 추정, 추론 때 맥락 중심이 가장 가까운 편집 적용 (키의 학습 맥락 = `all`) | 맥락 간 전이 실패에 대한 대응 |
+| `pace_eye` | M = I | 명제(과제 역공분산 읽기)의 효과 |
+| `pace_group` | 짝 대신 집단 평균 차이 | 짝지은 반사실의 효과 |
+| `pace_noanchor` | 앵커 없음 | 앵커의 효과 |
+| `pace_early` | 공통 개입 구간 `--band` | 개입 위치의 효과 |
+
+옵션: `--pace-k 4`, `--pace-eps 1.0` (0.1·1·5 절제 권장), `--pace-pool 100` (S_T에 더할 학습·평가 밖 중립 문항 수).
 
 공개 코드가 없는 비교군: Ahsan & Wallace 2025, Shan & Mueller 2025 (SAE 특징 소거). `sae`는 이들의 절차를 참고한 AMBIT 구현이다.
 
@@ -376,13 +409,14 @@ E   = ΔD − ΔD_ctrl(C)                                초과 감소 (문항 �
 pip install -r requirements.txt
 python -m tests.test_removal_tiny                     # GPU 없이 파이프라인 점검 (작은 무작위 모델)
 python -m tests.test_reference_methods                # 원 논문 방식 비교군이 공개 코드와 같은 값을 내는지
+python -m tests.test_pace                             # 제안 기법 PACE: 명제 · 앵커 · 효과 차단 · 라우팅
 
 # 10분 점검
 python -m scripts.run_removal --model gemma-3-4b --n-train 4 --n-test 4 --methods diffmean --alphas 1.0
 
 # 본 실행 (중단돼도 같은 명령으로 이어서 돈다)
 nohup python -m scripts.run_removal --model gemma-3-12b \
-    --methods pca,leace,diffmean,affine,sae,leace_ref,km_ace,arditi,caa --alphas 0.5,1.0,2.0 > removal_g3.log 2>&1 &
+    --methods pca,leace,diffmean,affine,sae,leace_ref,km_ace,arditi,caa,splice,pace,pace_routed --alphas 0.5,1.0,2.0 > removal_g3.log 2>&1 &
 
 # 오늘 밤 축소판: 정체성 10개
 python -m scripts.run_removal --model gemma-2-9b --methods pca,leace,diffmean \
