@@ -47,7 +47,8 @@ def collect_acts(model, tok, items, layers, batch=16):
     hs = [blocks[l].register_forward_hook(mk(l)) for l in layers]
     try:
         for i in range(0, len(items), batch):
-            model(**_encode(tok, [it["text"] for it in items[i:i + batch]], _device(model)), use_cache=False)
+            model(**_encode(tok, [it["text"] for it in items[i:i + batch]], _device(model)), use_cache=False,
+                  logits_to_keep=1)   # 활성값만 필요 — 전체 위치 로짓(배치×길이×어휘 262k ≈ 2GB)을 만들지 않는다
     finally:
         for h in hs:
             h.remove()
@@ -244,7 +245,8 @@ def score_items(model, tok, items, batch=8, lo=0, hi=10):
     for s0 in range(0, len(order), batch):
         idx = order[s0:s0 + batch]
         enc = _encode(tok, [items[i]["text"] for i in idx], dev)
-        out = model(**enc, use_cache=True)
+        # 마지막 위치 로짓만 (왼쪽 패딩이라 -1이 실제 마지막 토큰). 전체 위치 로짓은 Gemma 어휘 262k에서 배치당 ~2GB라 OOM 경고를 냈다
+        out = model(**enc, use_cache=True, logits_to_keep=1)
         lp = torch.log_softmax(out.logits[:, -1].float(), -1)
         P = torch.stack([lp[:, first[k]].logsumexp(-1) for k in digits], -1).exp()
         P10 = lp[:, ten].logsumexp(-1).exp() if ten else torch.zeros(len(P), device=dev)
@@ -255,7 +257,7 @@ def score_items(model, tok, items, batch=8, lo=0, hi=10):
                          past_key_values=out.past_key_values, use_cache=True)
         except Exception:     # 캐시 형식이 맞지 않는 모델: 전체 재계산
             out2 = model(input_ids=torch.cat([enc["input_ids"], nxt], 1), attention_mask=mask2,
-                         position_ids=(mask2.cumsum(-1) - 1).clamp(min=0), use_cache=False)
+                         position_ids=(mask2.cumsum(-1) - 1).clamp(min=0), use_cache=False, logits_to_keep=1)
         p0 = torch.softmax(out2.logits[:, -1].float(), -1)[:, zero].sum(-1)
         j1 = digits.index(1)
         P1 = P[:, j1].clone()
