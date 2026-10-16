@@ -315,6 +315,71 @@ def gate(dev_before, dev_after, C_method, control_runs, n_boot=1000, seed=0):
             "C": float(C_method), "control_C_max": float(Cs.max()), "extrapolated": bool(extrapolated)}
 
 
+def _envelope(ctrl_C, ctrl_dD):
+    """대조군 (C, ΔD)의 단조 포락선: C ≥ 0인 대조군만, (0, 0)을 포함해 C 순으로 누적 최댓값 (v5 사전등록, 보수적)."""
+    C = np.array([0.0] + list(ctrl_C)); D = np.array([0.0] + list(ctrl_dD))
+    o = np.argsort(C, kind="stable")
+    return C[o], np.maximum.accumulate(D[o])
+
+
+def gate_v2(dev_before, dev_after, C_method, control_runs, n_boot=1000, seed=0):
+    """판정 v2 (gate v1의 결함 수정).
+    v1 결함: (1) 분산을 늘린 대조군(C < 0)이 압축선에 섞여, 분산을 늘리고 격차도 키운 기법이 E > 0으로 통과했다.
+             (2) 대조군 범위 밖(C > 최대)은 표시만 하고 판정했다 → 출력이 거의 상수가 된 칸이 '진짜 제거'로 나왔다.
+             (3) 격차 감소 ΔD > 0을 요구하지 않았다.
+    v2 규칙 (v5 사전등록과 같음):
+      C < 0                    → status 'inflation'    (분산 증가: 압축 통제 판정의 대상이 아님)
+      C > 대조군 최대 C         → status 'out_of_range' (판정 불가: 대조군을 더 세게 돌려야 함)
+      ΔD 95% CI 하한 ≤ 0       → status 'ineffective'  (격차가 줄지 않음)
+      E 95% CI 하한 > 0         → status 'pass'         E = ΔD − 포락선(C), 포락선 = C ≥ 0 대조군의 누적 최댓값
+      그 밖                    → status 'compression'
+    문항 단위 부트스트랩."""
+    rng = np.random.default_rng(seed)
+    item_ids = sorted({iid for _, iid, _ in dev_before})
+    valid = [(c, dv) for c, dv in control_runs if c >= 0]
+    C_max = max([c for c, _ in valid], default=0.0)
+    dDs, Es = [], []
+    for _ in range(n_boot):
+        sub = set(rng.choice(item_ids, len(item_ids), replace=True).tolist())
+        D0 = disparity(dev_before, sub)
+        dD = D0 - disparity(dev_after, sub)
+        Cs, env = _envelope([c for c, _ in valid], [D0 - disparity(dv, sub) for _, dv in valid])
+        dDs.append(dD)
+        Es.append(dD - np.interp(min(max(C_method, 0.0), C_max), Cs, env))
+    dlo, dhi = np.percentile(dDs, [2.5, 97.5]); elo, ehi = np.percentile(Es, [2.5, 97.5])
+    if C_method < 0:
+        status = "inflation"
+    elif C_method > C_max:
+        status = "out_of_range"
+    elif dlo <= 0:
+        status = "ineffective"
+    elif elo > 0:
+        status = "pass"
+    else:
+        status = "compression"
+    return {"status": status, "behavior_pass": status == "pass", "C": float(C_method), "control_C_max": float(C_max),
+            "dD_mean": float(np.mean(dDs)), "dD_ci": [float(dlo), float(dhi)],
+            "E_mean": float(np.mean(Es)), "ci": [float(elo), float(ehi)],
+            "extrapolated": bool(C_method > C_max or C_method < 0)}
+
+
+VERDICT_V2 = {"inflation": "분산 증가", "out_of_range": "판정 불가(대조군 범위 밖)", "ineffective": "무효",
+              "compression": "압축", "pass": "행동 개선"}
+
+
+def verdict_v2(g, probe, margin=0.05):
+    """행동 status × 표현 잔존(개입 후 MLP 프로브 ≤ 우연 + margin)."""
+    st = g["status"]
+    if st in ("inflation", "out_of_range"):
+        return VERDICT_V2[st]
+    if probe is None:
+        return VERDICT_V2[st]
+    rep_removed = probe["mlp"] <= probe["chance"] + margin
+    if st == "pass":
+        return "진짜 제거" if rep_removed else "분리(행동만)"
+    return "비활성 소거(표현만)" if rep_removed else VERDICT_V2[st]
+
+
 # ---------------------------------------------------------------- 7) 표현 잔존
 def probe_acc(acts, labels, seed=0):
     """선형(로지스틱)과 비선형(MLP) 프로브의 정체성 디코딩 정확도 (층화 k-fold, 표준화 후).
