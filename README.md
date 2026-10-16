@@ -276,7 +276,7 @@ python -m scripts.run_parallel all --models core --dry-run      # 배치 계획�
 python -m scripts.run_parallel check    --models core           # SAE ↔ 모델 연계성 (outputs/sae_check/)
 python -m scripts.run_parallel behavior --models core --datasets jobfair,lbox,mind
 python -m scripts.run_parallel sae      --models core --datasets jobfair,lbox,mind
-python -m scripts.run_parallel removal  --models core --extra "--methods pca,leace,diffmean,affine,sae --alphas 0.5,1.0,2.0"
+python -m scripts.run_parallel removal  --models core --extra "--methods pca,leace,diffmean,affine,sae,leace_ref,km_ace,arditi,caa --alphas 0.5,1.0,2.0"
 ```
 
 `--gpus 0,1`로 쓸 GPU를 고르고, 작업별 로그는 `logs/<task>_<model>_<ds>.log`, 요약은 `logs/parallel_<task>.json`. 27B 모델은 40GB GPU 2장을 묶는다. SAE가 없는 모델은 check·sae 단계에서 자동으로 빠진다.
@@ -341,6 +341,21 @@ E   = ΔD − ΔD_ctrl(C)                                초과 감소 (문항 �
 
 층은 **깊이 비율**(`--band 0.43,0.62`, Gemma-2-9B의 18~26층)로 지정하고, 개입하는 층마다 그 층의 활성값으로 방향을 따로 추정한다. SAE 소거는 SAE가 있는 층 하나에만 적용한다.
 
+### 원 논문 공개 코드 방식 비교군 (`scripts/reference_methods.py`)
+
+위 기법은 AMBIT 설정에 맞춘 구현이다(예: `affine`은 Marshall et al.의 ACE를 중립 평균 기준으로 적용, `diffmean`은 AxBench 방향 + Arditi 소거식을 개입 구간에만 적용). 원 논문 절차 그대로 돌려도 같은 판정이 나오는지 보려고, 코드를 공개한 비교군은 그 절차를 따로 구현했다. 판정(E · 프로브)은 똑같이 적용된다.
+
+| 키 | 원 논문 · 공개 코드 | 원 코드 절차 | AMBIT에 맞춘 부분 |
+|---|---|---|---|
+| `leace_ref` | Belrose et al. 2023 · [EleutherAI/concept-erasure](https://github.com/EleutherAI/concept-erasure) (MIT) | 패키지의 `LeaceFitter`를 직접 호출 (축소 공분산, svd_tol, 공분산 대각합 제약) | 층마다 원래 활성값으로 추정 (원 논문의 순차 scrubbing 아님) |
+| `km_ace` | Karvonen & Marks 2025 · [adamkarvonen/llm_bias](https://github.com/adamkarvonen/llm_bias) (라이선스 없음 → 재구현) | 토큰 평균 활성값, 표준편차로 나눈 백화 방향, 두 집단 투영 평균의 중점으로 이동, 전 층 · 모든 위치 | 인종 · 성별 대신 성별 + 속성별 이진 방향(`--km-types`), 방향은 AMBIT 학습 문항으로 추정 |
+| `arditi` | Arditi et al. 2024 · [andyrdt/refusal_direction](https://github.com/andyrdt/refusal_direction) (Apache-2.0) | 한 층에서 뽑은 평균 차이 방향을 **모든 층**의 블록 입력과 attn · mlp 출력에서 소거, 후보 층 중 선택 | 선택 기준 = 학습 문항 격차 최소 + 압축률 C ≤ 0.1 (원 논문의 거부 점수 + KL < 0.1 필터 대응) |
+| `caa` | Rimsky(Panickssery) et al. 2024 · [nrimsky/CAA](https://github.com/nrimsky/CAA) (MIT) | 정규화하지 않은 쌍 평균 차이 벡터를 한 층, 지시문 끝 이후 위치에 더함 (층 스윕) | 벡터를 빼는 방향(배수 −α), 층 선택은 `arditi`와 같은 기준 |
+
+`tests/test_reference_methods.py`가 원 저장소 함수와 수치가 같은지 확인한다 (원 저장소를 받고 `LLM_BIAS_PATH`, `REFUSAL_DIRECTION_PATH`를 주면 비교, 없으면 건너뜀). 확인 결과: LEACE 최대 차이 7.7e-07, Karvonen & Marks 7.2e-07, Arditi logits 차이 0.
+
+공개 코드가 없는 비교군: Ahsan & Wallace 2025, Shan & Mueller 2025 (SAE 특징 소거). `sae`는 이들의 절차를 참고한 AMBIT 구현이다.
+
 ### 지원 모델 (`python -m scripts.run_removal --list-models`)
 
 | key | 공개 SAE | SAE 학습 | 용도 | GPU |
@@ -360,13 +375,14 @@ E   = ΔD − ΔD_ctrl(C)                                초과 감소 (문항 �
 ```bash
 pip install -r requirements.txt
 python -m tests.test_removal_tiny                     # GPU 없이 파이프라인 점검 (작은 무작위 모델)
+python -m tests.test_reference_methods                # 원 논문 방식 비교군이 공개 코드와 같은 값을 내는지
 
 # 10분 점검
 python -m scripts.run_removal --model gemma-3-4b --n-train 4 --n-test 4 --methods diffmean --alphas 1.0
 
 # 본 실행 (중단돼도 같은 명령으로 이어서 돈다)
 nohup python -m scripts.run_removal --model gemma-3-12b \
-    --methods pca,leace,diffmean,affine,sae --alphas 0.5,1.0,2.0 > removal_g3.log 2>&1 &
+    --methods pca,leace,diffmean,affine,sae,leace_ref,km_ace,arditi,caa --alphas 0.5,1.0,2.0 > removal_g3.log 2>&1 &
 
 # 오늘 밤 축소판: 정체성 10개
 python -m scripts.run_removal --model gemma-2-9b --methods pca,leace,diffmean \
