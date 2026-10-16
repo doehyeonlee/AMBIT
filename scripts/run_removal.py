@@ -104,6 +104,8 @@ def main():
     ap.add_argument("--batch", type=int, default=8)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--no-probe", action="store_true")
+    ap.add_argument("--probe-max-alpha-only", action="store_true",
+                    help="표현 잔존 프로브를 가장 센 α에서만 (기본: 모든 α — 행동 개선 칸의 진짜 제거/분리 판정에 필요)")
     ap.add_argument("--output-dir", default=None)
     ap.add_argument("--list-models", action="store_true")
     a = ap.parse_args()
@@ -285,24 +287,28 @@ def main():
                 cell = {"eval": {}}
                 for ec in ctxs:
                     dv = R.deviations(*S[ec])
-                    g = R.gate(dev0[ec], dv, R.compression(B[ec][0], S[ec][0]), ctrl_runs[ec])
+                    Cm = R.compression(B[ec][0], S[ec][0])
+                    g = R.gate_v2(dev0[ec], dv, Cm, ctrl_runs[ec])          # 판정 v2 (주)
+                    g["v1"] = {k: v for k, v in R.gate(dev0[ec], dv, Cm, ctrl_runs[ec]).items()
+                               if k in ("E_mean", "ci", "behavior_pass")}    # 이전 판정 (비교용)
                     g["disparity_after"] = float(R.disparity(dv))
                     cell["eval"][ec] = g
                 cell["scores"] = np.concatenate([S[c][0] for c in ctxs]).tolist()
-                if not a.no_probe and al == max(alphas):   # 표현 잔존: 개입을 건 채 마지막 개입 층에서 정체성 디코딩
+                if not a.no_probe and (al == max(alphas) or not a.probe_max_alpha_only):   # 표현 잔존: 개입을 건 채 마지막 개입 층에서 정체성 디코딩
                     last = min(max(edits), max(band))   # 전 층 개입(km_ace)도 다른 기법과 같은 층에서 잰다
                     with R.Intervention(model, edits, al):
                         for ec in ctxs:
                             sub = [it for it in test if it["context"] == ec and it["identity"] != "neutral"]
                             X = R.collect_acts(model, tok, sub, [last], a.batch)[last]
                             pr = R.probe_acc(X, np.array([it["identity"] for it in sub]))
-                            cell["eval"][ec] |= {"probe": pr, "verdict": R.verdict(cell["eval"][ec]["behavior_pass"], pr)}
+                            cell["eval"][ec] |= {"probe": pr, "verdict": R.verdict_v2(cell["eval"][ec], pr)}
                 res["runs"][key] = cell; save()
 
     print("\n기법|학습맥락|α  →  평가맥락: E [95% CI] 판정")
     for key, cell in res["runs"].items():
         print(f"{key:26s} " + "  ".join(
-            f"{ec}: {g['E_mean']:+.3f} [{g['ci'][0]:+.3f},{g['ci'][1]:+.3f}] {g.get('verdict', '')}"
+            f"{ec}: E {g['E_mean']:+.3f} [{g['ci'][0]:+.3f},{g['ci'][1]:+.3f}] C {g['C']:+.2f} "
+            f"{g.get('verdict') or R.VERDICT_V2.get(g.get('status'), '')}"
             for ec, g in cell["eval"].items()))
     print(f"\n저장: {path}")
 
